@@ -30,12 +30,35 @@ const Header = () => {
   const [showCart, setShowCart] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [hideMobileHeader, setHideMobileHeader] = useState(false);
 
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
     const current = qs.get('search') || '';
     setSearchTerm(current);
   }, [location.search]);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const goingDown = y > lastY;
+          const shouldHide = goingDown && y > 80;
+          setHideMobileHeader(shouldHide);
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const submitSearch = (e) => {
     e?.preventDefault();
@@ -56,13 +79,18 @@ const Header = () => {
   return (
     <>
       {/* DESKTOP */}
-      <Navbar expand="md" variant="dark" sticky="top" className="header-navbar d-none d-md-flex">
+      <Navbar
+        expand="md"
+        variant="dark"
+        sticky="top"
+        className={`header-navbar d-none d-md-flex${hideMobileHeader ? ' is-hidden' : ''}`}
+      >
         <Container fluid className="align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-3">
             <Navbar.Brand as={Link} to="/" className="brand d-flex align-items-center m-0">
-              <img src={logo} alt="CotiStore" className="brand-logo" style={{ height: 36 }} />
+              <img src={logo} alt="CotiStore" className="brand-logo" />
             </Navbar.Brand>
-            <Nav className="align-items-center gap-3">
+            <Nav className="align-items-center gap-3 desktop-main-nav">
               <Nav.Link as={Link} to="/" className="nav-link-plain">Inicio</Nav.Link>
               <Nav.Link as={Link} to="/productos" className="nav-link-plain">Productos</Nav.Link>
               {user?.role === 'admin' && (
@@ -80,8 +108,8 @@ const Header = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <Button type="submit" className="btn-search-accent">
-                  <FaSearch className="me-1" /> Buscar
+                <Button type="submit" className="btn-search-accent" aria-label="Buscar">
+                  <FaSearch className="search-icon" />
                 </Button>
               </InputGroup>
             </Form>
@@ -100,12 +128,12 @@ const Header = () => {
                     <strong>{user.name}</strong>
                   </span>
                   <Nav.Link as={Link} to="/account" className="nav-link-plain">Mi cuenta</Nav.Link>
-                  <Button variant="outline-light" size="sm" onClick={logout}>Salir</Button>
+                  <Button className="header-logout-btn" size="sm" onClick={logout}>Salir</Button>
                 </>
               ) : (
                 <>
                   <Nav.Link as={Link} to="/login" className="nav-link-plain">Iniciar sesión</Nav.Link>
-                  <Nav.Link as={Link} to="/register" className="nav-link-plain">Registrarse</Nav.Link>
+                  <Nav.Link as={Link} to="/register" className="nav-link-plain">Registrarte</Nav.Link>
                 </>
               )}
 
@@ -124,14 +152,14 @@ const Header = () => {
       </Navbar>
 
       {/* MÓVIL */}
-      <header className="mobile-header d-md-none">
+      <header className={`mobile-header d-md-none${hideMobileHeader ? ' is-hidden' : ''}`}>
         <div className="mobile-topbar">
           <Link to="/" className="mobile-brand">
             <img src={logo} alt="CotiStore" />
           </Link>
 
           <button className="icon-btn" aria-label="Buscar" onClick={() => setShowSearch(true)}>
-            <FaSearch />
+            <FaSearch className="search-icon" />
           </button>
 
           <button className="icon-btn cart" aria-label="Abrir carrito" onClick={() => setShowCart(true)}>
@@ -215,3 +243,5 @@ const Header = () => {
 };
 
 export default Header;
+
+

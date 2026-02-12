@@ -42,16 +42,23 @@ export function CartProvider({ children }) {
 
   const findIndex = (id) => cartItems.findIndex(i => String(i.id || i._id) === String(id));
 
-  const isLoggedIn = !!(token || localStorage.getItem('auth_token'));
-  const canBuy = isLoggedIn && !loading;
+  const buildAttributesKey = (attrs = {}) => {
+    const entries = Object.entries(attrs || {})
+      .map(([k, v]) => {
+        const val = Array.isArray(v) ? v.join(',') : v;
+        return `${k}:${val}`;
+      })
+      .sort();
+    return entries.join('|');
+  };
 
-  const addToCart = (product, qty = 1) => {
-    if (!canBuy) {
-      window.alert('Iniciá sesión para ver precios y comprar.');
-      return;
-    }
+  const canBuy = !loading;
+
+  const addToCart = (product, qty = 1, attributes = {}) => {
     const cantidad = Math.max(1, Number(qty) || 1);
-    const id = product.id || product._id || `${product.categoria}-${product.nombre}`;
+    const baseId = product.id || product._id || `${product.categoria}-${product.nombre}`;
+    const attrsKey = buildAttributesKey(attributes);
+    const id = attrsKey ? `${baseId}::${attrsKey}` : baseId;
     const idx = findIndex(id);
     if (idx >= 0) {
       const copy = [...cartItems];
@@ -60,10 +67,12 @@ export function CartProvider({ children }) {
     } else {
       persist([...cartItems, {
         id,
-        nombre: product.nombre,
-        precio: product.precio ?? 0,
+        productId: String(product.id || product._id || baseId),
+        nombre: product.nombre || product.name || 'Producto',
+        precio: Number(product.precio ?? product.price ?? 0),
         imagen: product.imagen || '',
-        cantidad
+        cantidad,
+        atributos: attributes
       }]);
     }
   };
@@ -93,7 +102,7 @@ export function CartProvider({ children }) {
     cartItems.reduce((acc, it) => acc + (it.cantidad || 1), 0);
 
   const getTotalPrice = () =>
-    cartItems.reduce((acc, it) => acc + (it.precio ?? 0) * (it.cantidad || 1), 0);
+    cartItems.reduce((acc, it) => acc + Number(it.precio ?? it.price ?? 0) * (it.cantidad || 1), 0);
 
   const value = useMemo(() => ({
     cartItems,

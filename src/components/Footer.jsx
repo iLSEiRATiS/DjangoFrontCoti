@@ -1,4 +1,4 @@
-// src/components/Footer.jsx
+﻿// src/components/Footer.jsx
 import { useEffect, useState } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { FaInstagram, FaEnvelope, FaPhoneAlt, FaArrowUp } from 'react-icons/fa';
@@ -18,21 +18,25 @@ const Footer = () => {
 
   return (
     <>
-      <footer className="bg-dark text-white mt-4 pt-3" role="contentinfo" style={{ paddingBottom: 8 }}>
+      <footer className="footer-modern text-white mt-4 pt-4" role="contentinfo">
         <Container>
-          <Row className="gy-3 align-items-start">
+          <Row className="gy-4 align-items-start">
             <Col md={5}>
-              <h6 className="mb-1">CotiStore</h6>
-              <p className="mb-0 small text-white-50">
-                Mayorista de cotillón y artículos para eventos. Calidad y buen precio.
-              </p>
+              <div className="footer-brand">
+                <h5 className="mb-2">CotiStore</h5>
+                <p className="mb-0 text-white-50 small">
+                  Mayorista de artículos de cotillón, repostería, papelería y librería. Calidad y buen precio.
+                </p>
+              </div>
             </Col>
 
             <Col md={4}>
-              <h6 className="mb-1">Contacto</h6>
-              <ul className="list-unstyled mb-0 small">
+              <h6 className="text-uppercase fw-semibold small mb-3 text-white-50">Contacto</h6>
+              <ul className="list-unstyled mb-0 small footer-contact">
                 <li className="d-flex align-items-center">
-                  <FaEnvelope className="me-2" aria-hidden />
+                  <span className="footer-icon" aria-hidden>
+                    <FaEnvelope />
+                  </span>
                   <a
                     href="mailto:ventascotistore@gmail.com"
                     className="link-light text-decoration-none"
@@ -41,7 +45,9 @@ const Footer = () => {
                   </a>
                 </li>
                 <li className="d-flex align-items-center mt-2">
-                  <FaPhoneAlt className="me-2" aria-hidden />
+                  <span className="footer-icon" aria-hidden>
+                    <FaPhoneAlt />
+                  </span>
                   <a href="tel:+541139581816" className="link-light text-decoration-none">
                     11 3958-1816
                   </a>
@@ -50,23 +56,26 @@ const Footer = () => {
             </Col>
 
             <Col md={3}>
-              <h6 className="mb-1">Redes</h6>
-              <a
-                href="https://www.instagram.com/cotistore_mayorista"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline-light btn-sm d-inline-flex align-items-center"
-                aria-label="Instagram de CotiStore (se abre en una pestaña nueva)"
-              >
-                <FaInstagram className="me-2" aria-hidden />
-                @cotistore_mayorista
-              </a>
+              <h6 className="text-uppercase fw-semibold small mb-3 text-white-50">Seguinos</h6>
+              <div className="d-flex flex-column gap-2">
+                <a
+                  href="https://www.instagram.com/cotistore_mayorista"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="footer-social footer-social-icon"
+                  aria-label="Instagram de CotiStore (se abre en una pestaña nueva)"
+                >
+                  <span className="footer-icon" aria-hidden>
+                    <FaInstagram />
+                  </span>
+                </a>
+              </div>
             </Col>
           </Row>
 
-          <hr className="border-secondary my-2" />
+          <div className="footer-divider" />
 
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center pb-1">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center pb-2">
             <small className="text-white-50">
               © {year} CotiStore — Todos los derechos reservados.
             </small>
@@ -90,3 +99,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

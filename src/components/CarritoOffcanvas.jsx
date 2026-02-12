@@ -31,7 +31,10 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
   const handleChange = (id, value) => {
     const num = Number(value);
     if (!Number.isFinite(num)) return;
-    setQuantity(id, Math.max(1, Math.min(9999, Math.trunc(num))));
+    const item = cartItems.find((x) => String(x.id) === String(id));
+    const maxStock = Number.isFinite(Number(item?.maxStock)) ? Number(item.maxStock) : 9999;
+    const cap = Math.min(9999, maxStock);
+    setQuantity(id, Math.max(1, Math.min(cap, Math.trunc(num))));
   };
 
   const goCheckout = () => {
@@ -84,6 +87,13 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
                           {item.nombre}
                         </span>
                       </OverlayTrigger>
+                      {item.atributos && Object.keys(item.atributos).length > 0 && (
+                        <div className="text-muted small text-center mb-2">
+                          {Object.entries(item.atributos)
+                            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                            .join(' · ')}
+                        </div>
+                      )}
 
                       <div className="d-flex align-items-center justify-content-center gap-2">
                         <Button
@@ -109,6 +119,7 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
                         <Button
                           size="sm"
                           variant="outline-secondary"
+                          disabled={false}
                           onClick={() => increaseQuantity(item.id)}
                           aria-label={`Aumentar cantidad de ${item.nombre}`}
                         >
@@ -119,7 +130,7 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
 
                     <Col xs={3} className="text-end">
                       <small className="text-muted fw-semibold">
-                        {money.format((item.precio ?? 0) * item.cantidad)}
+                        {money.format(Number(item.precio ?? item.price ?? 0) * item.cantidad)}
                       </small>
                       <br />
                       <Button

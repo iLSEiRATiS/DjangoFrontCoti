@@ -16,8 +16,10 @@ export default function Carrito() {
   } = useCart();
   const navigate = useNavigate();
 
+  const hasInvalidItems = cartItems.some((it) => Number(it.precio ?? it.price ?? 0) <= 0);
+
   const goCheckout = () => {
-    if (!cartItems.length) return;
+    if (!cartItems.length || hasInvalidItems) return;
     navigate('/checkout');
   };
 
@@ -25,6 +27,11 @@ export default function Carrito() {
     <Container className="my-5">
       <h2 className="mb-4 text-center">Tu Carrito</h2>
 
+      {hasInvalidItems && (
+        <div className="alert alert-warning">
+          Hay productos sin precio. Revisá el carrito para continuar.
+        </div>
+      )}
       {cartItems.length === 0 ? (
         <p className="text-center">Tu carrito está vacío.</p>
       ) : (
@@ -42,11 +49,18 @@ export default function Carrito() {
               </thead>
               <tbody>
                 {cartItems.map(item => {
-                  const precio = item.precio ?? 0;
+                  const precio = Number(item.precio ?? item.price ?? 0);
                   const subtotal = (item.cantidad || 1) * precio;
+                  const attrs = item.atributos || {};
+                  const attrsText = Object.keys(attrs).length
+                    ? Object.entries(attrs).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' · ')
+                    : '';
                   return (
                     <tr key={item.id}>
-                      <td className="align-middle">{item.nombre}</td>
+                      <td className="align-middle">
+                        <div>{item.nombre}</div>
+                        {attrsText && <div className="text-muted small">{attrsText}</div>}
+                      </td>
                       <td className="align-middle">
                         <Image src={item.imagen} alt={item.nombre} height={50} width={50} style={{ objectFit: 'cover' }} rounded />
                       </td>
@@ -84,7 +98,7 @@ export default function Carrito() {
                 className="btn btn-success w-100"
                 role="button"
                 onClick={(e) => { if (!cartItems.length) { e.preventDefault(); return; } goCheckout(); }}
-                style={{ pointerEvents: cartItems.length ? 'auto' : 'none', opacity: cartItems.length ? 1 : 0.65 }}
+                style={{ pointerEvents: (cartItems.length && !hasInvalidItems) ? 'auto' : 'none', opacity: (cartItems.length && !hasInvalidItems) ? 1 : 0.65 }}
               >
                 Confirmar pedido
               </a>

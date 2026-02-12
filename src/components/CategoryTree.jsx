@@ -43,7 +43,7 @@ const CategoryTree = ({ value, onChange, onClear }) => {
       <ul className="cat-list list-unstyled mb-0">
         {tree.map((cat) => {
           const catKey = cat.nombre;
-          const isOpen = open[catKey] ?? true;
+          const isOpen = open[catKey] ? true;
           const activeCat = value?.cat === cat.nombre;
 
           return (
@@ -76,7 +76,7 @@ const CategoryTree = ({ value, onChange, onClear }) => {
                     }
                     // sc = { nombre, hijos: [] }
                     const subKey = `${catKey}::${sc.nombre}`;
-                    const subOpen = open[subKey] ?? true;
+                    const subOpen = open[subKey] ? true;
                     const activeSub = activeCat && value?.sub === sc.nombre;
 
                     return (

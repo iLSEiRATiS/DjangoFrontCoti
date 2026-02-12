@@ -27,7 +27,7 @@ function OverviewCard({ title, value, muted }) {
   return (
     <div className="p-3 border rounded h-100">
       <div className="text-muted small">{title}</div>
-      <div className="fs-4 fw-bold">{value ?? '—'}</div>
+      <div className="fs-4 fw-bold">{value ?? '-'}</div>
       {muted && <div className="text-muted small mt-1">{muted}</div>}
     </div>
   );
@@ -231,7 +231,7 @@ export default function Panel() {
                   <td>{p.name || p.nombre}</td>
                   <td>{p.category?.name || p.categoria || '-'}</td>
                   <td>{p.price != null ? `$ ${p.price}` : '—'}</td>
-                  <td>{p.stock ?? '—'}</td>
+                  <td>{p.stock ?? '-'}</td>
                 </tr>
               ))}
               {productos.length === 0 && (

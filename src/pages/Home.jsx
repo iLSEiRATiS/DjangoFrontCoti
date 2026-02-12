@@ -1,13 +1,12 @@
 // src/pages/Home.jsx
 import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
+import velasImg from '../assets/Velas.png';
+import decoImg from '../assets/deco.png';
+import luminososImg from '../assets/luminosos.png';
 
-/** Hero con imágenes libres de Pexels (ejemplos) */
-const heroImages = [
-  'https://images.pexels.com/photos/168927/pexels-photo-168927.jpeg',
-  'https://images.pexels.com/photos/587741/pexels-photo-587741.jpeg',
-  'https://images.pexels.com/photos/797487/pexels-photo-797487.jpeg',
-];
+/** Hero con imágenes locales */
+const heroImages = [velasImg, decoImg, luminososImg];
 
 /** Mosaico principal de categorías (enlaza a /productos con filtros) */
 const tiles = [
@@ -37,15 +36,36 @@ const Home = () => {
           <Carousel.Item key={i}>
             <div style={{ maxHeight: 440, overflow: 'hidden' }}>
               <img
-                src={`${src}?auto=compress&cs=tinysrgb&w=1600`}
+                src={src}
                 alt={`Slide ${i + 1}`}
                 className="d-block w-100"
                 style={{ objectFit: 'cover', height: 440 }}
               />
             </div>
-            <Carousel.Caption>
-              <h3 className="bg-dark bg-opacity-50 px-3 py-2 rounded fw-bold">CotiStore Mayorista</h3>
-              <p className="bg-dark bg-opacity-50 px-3 py-2 rounded mb-0">Todo para tu fiesta, al mejor precio.</p>
+            <Carousel.Caption className="d-flex flex-column align-items-center text-center">
+              <h3
+                className="px-3 py-2 rounded fw-bold"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.78)',
+                  color: '#111',
+                  textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+                  display: 'inline-block',
+                }}
+              >
+                CotiStore Mayorista
+              </h3>
+              <p
+                className="px-3 py-2 rounded mb-0"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  color: '#111',
+                  textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+                  display: 'inline-block',
+                  marginTop: 8,
+                }}
+              >
+                Todo para tu fiesta, al mejor precio.
+              </p>
             </Carousel.Caption>
           </Carousel.Item>
         ))}
@@ -61,7 +81,7 @@ const Home = () => {
                 <div>
                   <Card.Title className="h6 mb-1">Precios mayoristas</Card.Title>
                   <Card.Text className="mb-0 text-muted small">
-                    Lista optimizada para revendedores y eventos. Pedidos grandes, mejores condiciones.
+                    Lista optimizada para cotillones y revendedores. Pedidos grandes, mejores condiciones.
                   </Card.Text>
                 </div>
               </Card.Body>
@@ -191,7 +211,6 @@ const Home = () => {
                 <Card.Text className="text-muted small">
                   Te contactamos para envío o retiro y cerrar el pedido.
                 </Card.Text>
-                <Button as={Link} to="/checkout" size="sm" variant="primary">Simular pedido</Button>
               </Card.Body>
             </Card>
           </Col>
@@ -203,14 +222,14 @@ const Home = () => {
         <Card className="border-0 shadow-sm">
           <Card.Body className="d-flex flex-column flex-md-row align-items-center justify-content-between">
             <div className="mb-3 mb-md-0">
-              <h3 className="h5 mb-1">¿Sos revendedor o tenés eventos?</h3>
+              <h3 className="h5 mb-1">¿Tenés un local de cotillón o estás por abrir uno?</h3>
               <p className="mb-0 text-muted">
-                Contactanos para listas personalizadas y disponibilidad de stock mayorista.
+                Contactanos para listas personalizadas y stock mayorista disponible.
               </p>
             </div>
             <div className="d-flex gap-2">
-              <Button as="a" href="mailto:ventascotistore@gmail.com" variant="success">
-                Escribinos por mail
+              <Button as="a" href="https://wa.me/5491139581816" target="_blank" rel="noopener noreferrer" variant="success">
+                Escribinos por WhatsApp
               </Button>
               <Button as={Link} to="/productos" variant="outline-success">
                 Ver catálogo

@@ -308,7 +308,7 @@ export default function Account() {
       const fd = new FormData();
       fd.append('file', bulkFile);
       const res = await api.admin.importProductsXlsx(token, fd);
-      const summary = res?.message || `Importacion enviada. Importados: ${res?.imported ?? 'desconocido'}`;
+      const summary = res?.message || `Importación enviada. Importados: ${res?.imported ?? 'desconocido'}`;
       setImportMsg(summary);
       if (res?.errors?.length) setImportErr(res.errors.join('; '));
     } catch (e) {
@@ -462,57 +462,6 @@ export default function Account() {
                   </>
                 )}
               </Tab>
-              {isAdmin && (
-                <Tab eventKey="products" title="Productos">
-                  <div className="mt-3">
-                    <p className="text-muted" style={{ maxWidth: 760 }}>
-                      Carga masiva via XLSX. Usa estos encabezados: sku, parent_sku, nombre, slug, descripcion,
-                      categoria, subcategoria, marca, precio, costo, moneda, stock, activo, opcion_1_nombre,
-                      opcion_1_valor, opcion_2_nombre, opcion_2_valor, imagen_1, imagen_2, meta_title,
-                      meta_description, peso, largo, ancho, alto, es_destacado, requiere_envio, gestion_stock.
-                    </p>
-                    <div className="d-flex gap-2 mb-3">
-                      <Button variant="outline-secondary" onClick={() => downloadTemplate(false)}>Descargar plantilla</Button>
-                      <Button variant="outline-primary" onClick={() => downloadTemplate(true)}>Descargar ejemplo</Button>
-                    </div>
-                    <Form onSubmit={onImportProducts}>
-                      <Form.Group className="mb-2" controlId="bulkProductsFile">
-                        <Form.Label>Archivo XLSX de productos</Form.Label>
-                        <Form.Control type="file" accept=".xlsx" onChange={onFileSelect} />
-                        <Form.Text className="text-muted">
-                          Verifica que sku sea unico, que las categorias existan y que precio/stock sean numericos.
-                          Para variantes usa parent_sku y las columnas opcion_1/2.
-                        </Form.Text>
-                      </Form.Group>
-                      {previewRows.length > 0 && (
-                        <div className="mt-3">
-                          <div className="text-muted small mb-1">Primeras filas detectadas</div>
-                          <Table striped bordered hover responsive size="sm">
-                            <thead>
-                              <tr>
-                                {PRODUCT_HEADERS.slice(0, 6).map((h) => <th key={h}>{h}</th>)}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {previewRows.map((row, idx) => (
-                                <tr key={idx}>
-                                  {PRODUCT_HEADERS.slice(0, 6).map((h) => <td key={h}>{String(row[h] ?? '')}</td>)}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </Table>
-                        </div>
-                      )}
-                      {importErr && <Alert variant="danger" className="mt-2">{importErr}</Alert>}
-                      {importMsg && <Alert variant="success" className="mt-2">{importMsg}</Alert>}
-                      <div className="mt-3 d-flex align-items-center gap-2">
-                        <Button type="submit" disabled={importing}>{importing ? 'Subiendo...' : 'Subir XLSX'}</Button>
-                        <span className="text-muted small">Se enviara al endpoint de admin para crear/actualizar productos.</span>
-                      </div>
-                    </Form>
-                  </div>
-                </Tab>
-              )}
             </Tabs>
           )}
         </Card.Body>
