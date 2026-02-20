@@ -69,7 +69,8 @@ export const api = {
     list: (params) => http(`/api/products${qs(params)}`),
     get:  (id)     => http(`/api/products/${encodeURIComponent(id)}`),
     categories: () => http('/api/categories'),
-    offers: () => http('/api/offers')
+    offers: () => http('/api/offers'),
+    homeImages: () => http('/api/home-images')
   },
   account: {
     profile: (token)            => http('/api/account/profile', { token }),

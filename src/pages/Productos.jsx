@@ -4,6 +4,7 @@ import {
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import productosData from '../data/productos.json';
 import api, { API_BASE } from '../lib/api';
 
@@ -45,51 +46,109 @@ const matchInPath = (path, target) => {
 
 function mergeSpecialColorProducts(products = []) {
   if (!Array.isArray(products) || products.length === 0) return products;
-  const isHiloOro = (name = '') => {
-    const s = norm(name);
-    return s.includes('hilo') && s.includes('oro') && s.includes('x50mts');
-  };
-  const isHiloPlata = (name = '') => {
-    const s = norm(name);
-    return s.includes('hilo') && s.includes('plata') && s.includes('x50mts');
-  };
+  const mergeBySize = (items, size) => {
+    const isHiloOro = (name = '') => {
+      const s = norm(name);
+      return s.includes('hilo') && s.includes('oro') && (s.includes(`x${size}mts`) || s.includes(`x${size} mts`));
+    };
+    const isHiloPlata = (name = '') => {
+      const s = norm(name);
+      return s.includes('hilo') && s.includes('plata') && (s.includes(`x${size}mts`) || s.includes(`x${size} mts`));
+    };
 
-  const oro = products.find((p) => isHiloOro(p?.nombre));
-  const plata = products.find((p) => isHiloPlata(p?.nombre));
-  if (!oro || !plata) return products;
+    const oro = items.find((p) => isHiloOro(p?.nombre));
+    const plata = items.find((p) => isHiloPlata(p?.nombre));
+    if (!oro || !plata) return items;
 
-  const colorAttrName =
-    Object.keys(oro.atributos || {}).find((k) => norm(k).includes('color')) ||
-    Object.keys(plata.atributos || {}).find((k) => norm(k).includes('color')) ||
-    'Color';
+    const colorAttrName =
+      Object.keys(oro.atributos || {}).find((k) => norm(k).includes('color')) ||
+      Object.keys(plata.atributos || {}).find((k) => norm(k).includes('color')) ||
+      'Color';
 
-  const mergedColors = [];
-  const pushColor = (val) => {
-    const v = String(val || '').trim();
-    if (!v) return;
-    if (!mergedColors.some((x) => norm(x) === norm(v))) mergedColors.push(v);
-  };
+    const merged = {
+      ...oro,
+      id: `merged-${size}-${oro.id || 'hilo-oro-plata'}`,
+      nombre: `Hilo Oro/Plata x${size}mts (Elegir Color)`,
+      // Si una variante está activa y la otra no, mantener visible el producto combinado.
+      activo: (oro?.activo ?? true) || (plata?.activo ?? true),
+      atributos: {
+        ...(oro.atributos || {}),
+        ...(plata.atributos || {}),
+        [colorAttrName]: ['Oro', 'Plata'],
+      },
+    };
 
-  (oro.atributos?.[colorAttrName] || []).forEach(pushColor);
-  (plata.atributos?.[colorAttrName] || []).forEach(pushColor);
-  pushColor('Dorado');
-  pushColor('Plateado');
-
-  const merged = {
-    ...oro,
-    id: `merged-${oro.id || 'hilo-oro-plata'}`,
-    nombre: 'Hilo Oro/Plata x50mts (Elegir Color)',
-    atributos: {
-      ...(oro.atributos || {}),
-      ...(plata.atributos || {}),
-      [colorAttrName]: mergedColors,
-    },
+    return [merged, ...items.filter((p) => p !== oro && p !== plata)];
   };
 
-  return [merged, ...products.filter((p) => p !== oro && p !== plata)];
+  let out = [...products];
+  out = mergeBySize(out, '50');
+  out = mergeBySize(out, '10');
+  return out;
+}
+
+function fixSpecificGloboDuplicate(products = []) {
+  if (!Array.isArray(products) || products.length < 2) return products;
+  const targetName = norm('Globo Metalizado Dorado 32" Sueltos X50 Unidades (ELEGIR NÚMERO)');
+  const targetCat = norm('Número Metalizados');
+  const targetTop = norm('Globos y Piñatas');
+  const idxs = [];
+  for (let i = 0; i < products.length; i += 1) {
+    const p = products[i];
+    const nameOk = norm(p?.nombre || '') === targetName;
+    const catOk = norm(p?.categoria || '') === targetCat;
+    const pathOk = Array.isArray(p?.categoria_path) && p.categoria_path.some((x) => norm(x) === targetTop);
+    if (nameOk && catOk && pathOk) idxs.push(i);
+  }
+  if (idxs.length < 2) return products;
+  const copy = [...products];
+  const i = idxs[1];
+  copy[i] = {
+    ...copy[i],
+    nombre: 'Globo Metalizado Dorado 32" Sueltos X1 Unidades (ELEGIR NÚMERO)',
+    precio: 494,
+    precioOriginal: 494,
+    descuento: null,
+  };
+  return copy;
 }
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+const normalizeProductName = (name = '') => {
+  const raw = String(name || '').trim();
+  if (!raw) return raw;
+  // Corrige casos importados como "X0 Unidades (ELEGIR NÚMERO)" -> "X50 ..."
+  return raw.replace(/X0(\s*Unidades\s*\(ELEGIR N[ÚU]MERO\))/i, 'X50$1');
+};
+
+const shouldHideKnownBadGloboVariant = (name = '') => {
+  const n = norm(name);
+  return (
+    n === norm('Globo Metalizado Dorado 32" x (ELEGIR NUMERO)') ||
+    n === norm('Globo Metalizado Dorado 32" Sueltos X5 Unidades (ELEGIR NÚMERO)')
+  );
+};
+
+function dedupeSpecificGloboX1(products = []) {
+  if (!Array.isArray(products) || products.length < 2) return products;
+  const isTarget = (name = '') => {
+    const n = norm(name);
+    return (
+      n === norm('Globo Metalizado Dorado 32" x1 (ELEGIR NUMERO)') ||
+      (n.includes('globo metalizado dorado 32') && n.includes('x1') && n.includes('elegir numero'))
+    );
+  };
+  let seen = false;
+  return products.filter((p) => {
+    if (!isTarget(p?.nombre || '')) return true;
+    if (!seen) {
+      seen = true;
+      return true;
+    }
+    return false;
+  });
+}
 
 const SORTERS = {
   relevancia: { label: 'Relevancia', fn: () => 0 },
@@ -350,11 +409,11 @@ function findCategoryIdForSelection(categories = [], catLabel, subLabel) {
 }
 
 function applyFiltersToProducts(products, filters, skipCategoryFilter = false) {
-  const q = (filters.q || '').trim().toLowerCase();
+  const q = norm((filters.q || '').trim());
   const cat = filters.category || '';
   const sub = filters.subcategory || '';
   return products
-    .filter((p) => (q ? String(p.nombre || p.name || '').toLowerCase().includes(q) : true))
+    .filter((p) => (q ? norm(String(p.nombre || p.name || '')).includes(q) : true))
     .filter((p) => {
       const priceOk = Number(p.precio ?? 0) > 0;
       if (priceOk) return true;
@@ -578,6 +637,7 @@ function useMediaQuery(query) {
 
 export default function Productos() {
   const { addToCart } = useCart();
+  const { isLoggedIn } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -589,8 +649,8 @@ export default function Productos() {
   const qs = new URLSearchParams(location.search);
   const [search, setSearch] = useState(qs.get('search') || '');
   const [sortKey, setSortKey] = useState(qs.get('sort') || 'relevancia');
-  const [cat, setCat] = useState('');
-  const [subcat, setSubcat] = useState('');
+  const [cat, setCat] = useState(qs.get('cat') || '');
+  const [subcat, setSubcat] = useState(qs.get('subcat') || '');
   const [catTree, setCatTree] = useState(null);
   const [offers, setOffers] = useState([]);
   const [filterTick, setFilterTick] = useState(0);
@@ -603,6 +663,7 @@ export default function Productos() {
     message: ''
   });
   const [selectedAttrs, setSelectedAttrs] = useState({});
+  const lastSearchRef = useRef(search);
 
   const [draftCat, setDraftCat] = useState(cat);
   const [draftSubcat, setDraftSubcat] = useState(subcat);
@@ -624,27 +685,36 @@ export default function Productos() {
   useEffect(() => {
     const params = new URLSearchParams();
     if (search.trim()) params.set('search', search.trim());
+    if (cat) params.set('cat', cat);
+    if (subcat) params.set('subcat', subcat);
     if (sortKey !== 'relevancia') params.set('sort', sortKey);
     if (per !== 12) params.set('per', String(per));
     if (page !== 1) params.set('page', String(page));
     navigate({ pathname: '/productos', search: params.toString() }, { replace: true });
-  }, [search, sortKey, per, page, navigate]);
+  }, [search, cat, subcat, sortKey, per, page, navigate]);
 
   // Actualiza estado al cambiar la URL (p. ej. búsquedas desde el header)
   useEffect(() => {
     const qsLatest = new URLSearchParams(location.search);
     const nextSearch = qsLatest.get('search') || '';
+    const nextCat = qsLatest.get('cat') || '';
+    const nextSubcat = qsLatest.get('subcat') || '';
     const nextSort = qsLatest.get('sort') || 'relevancia';
     const perParam = Number(qsLatest.get('per') || 12);
     const nextPer = [12, 24, 48].includes(perParam) ? perParam : 12;
     const pageParam = Number(qsLatest.get('page') || 1);
     const nextPage = pageParam > 0 ? pageParam : 1;
 
+    const searchChanged = nextSearch !== lastSearchRef.current;
+    const categoryChanged = nextCat !== cat || nextSubcat !== subcat;
     setSearch(nextSearch);
+    setCat(nextCat);
+    setSubcat(nextSubcat);
     setSortKey(nextSort);
     setPer(nextPer);
-    setPage(nextPage);
-  }, [location.search]);
+    setPage(searchChanged || categoryChanged ? 1 : nextPage);
+    lastSearchRef.current = nextSearch;
+  }, [location.search, cat, subcat]);
 
   useEffect(() => {
     let alive = true;
@@ -754,7 +824,7 @@ export default function Productos() {
           const activo = (p.active ?? p.activo ?? true) !== false;
           return {
             id: p._id || p.id || p.slug,
-            nombre: p.name || p.nombre || 'Producto',
+            nombre: normalizeProductName(p.name || p.nombre || 'Producto'),
             precio,
             precioOriginal,
             descuento,
@@ -772,8 +842,9 @@ export default function Productos() {
           };
         });
         if (alive) {
-          const mergedMapped = mergeSpecialColorProducts(mapped);
-          setRemote(mergedMapped.filter((p) => p.activo));
+          const mergedMapped = fixSpecificGloboDuplicate(mergeSpecialColorProducts(mapped));
+          const cleanedMapped = dedupeSpecificGloboX1(mergedMapped);
+          setRemote(cleanedMapped.filter((p) => p.activo && !shouldHideKnownBadGloboVariant(p.nombre)));
           setTotalRemote(Number(data?.total) || mergedMapped.length || 0);
           setPagesRemote(Number(data?.pages) || Math.max(1, Math.ceil((Number(data?.total) || mergedMapped.length || 0) / per)));
         }
@@ -811,7 +882,8 @@ export default function Productos() {
   }, [search, sortKey]);
 
   const usingFallback = !!err;
-  const baseList = usingFallback ? localFiltered : remote;
+  const baseListRaw = usingFallback ? localFiltered : remote;
+  const baseList = useMemo(() => dedupeSpecificGloboX1(baseListRaw), [baseListRaw]);
   const appliedFilters = { q: search, category: cat, subcategory: subcat };
   const draftFilters = { q: draftFilterQ, category: draftCat, subcategory: draftSubcat };
   const skipCategoryFilter = !usingFallback && !isSizeGroupLabel(subcat);
@@ -1156,15 +1228,18 @@ export default function Productos() {
 
   const getProductKey = (p) => String(p?.id || `${p?.categoria}-${p?.nombre}`);
 
-  const getAttributeOptions = (attrName, values) => {
+  const getAttributeOptions = (attrName, values, product) => {
     const list = Array.isArray(values) ? values : (values ? [values] : []);
     const cleaned = list.map((v) => String(v).trim()).filter(Boolean);
     const normalizedName = norm(attrName || '');
     const hasNumberName = normalizedName.includes('numero');
+    const productName = norm(product?.nombre || '');
+    const asksNumberInName = productName.includes('elegir numero');
     const placeholderLike =
       cleaned.length <= 1 &&
       cleaned.some((v) => /elegir|numero|n[úu]mero/i.test(v));
-    if (hasNumberName && (placeholderLike || cleaned.length === 0)) {
+    // Si el producto es de "elegir numero", forzamos 0..9 aunque llegue solo un valor.
+    if (hasNumberName && (asksNumberInName || placeholderLike || cleaned.length <= 1)) {
       return Array.from({ length: 10 }, (_, i) => String(i));
     }
     return cleaned;
@@ -1176,7 +1251,7 @@ export default function Productos() {
     const out = {};
     const attrs = p?.atributos || {};
     Object.entries(attrs).forEach(([attrName, values]) => {
-      const list = getAttributeOptions(attrName, values);
+      const list = getAttributeOptions(attrName, values, p);
       if (!list.length) return;
       out[attrName] = current[attrName] || String(list[0]);
     });
@@ -1307,7 +1382,7 @@ export default function Productos() {
           <div className="catalog-results-summary">
             {total === 0
               ? 'Sin resultados'
-              : `Mostrando ${startIdx + 1}-${endIdx} de ${total}`}
+              : `Mostrando ${startIdx}-${endIdx} de ${total}`}
           </div>
 
           <Row className="g-4">
@@ -1336,13 +1411,11 @@ export default function Productos() {
                   </div>
                   <div className="p-3 d-flex flex-column flex-grow-1">
                     <h6 className="mb-2" style={{ lineHeight: 1.2 }}>{p.nombre}</h6>
-                    <div className="text-muted small mb-2">
-                      {(p.categoria || '—')} · {(p.subcategoria || '—')}
-                    </div>
+                    {/* Categoria/subcategoria oculta en card para una vista mas limpia */}
                     {p.atributos && Object.keys(p.atributos).length > 0 && (
                       <div className="mb-2">
                         {Object.entries(p.atributos).map(([attrName, values]) => {
-                          const list = getAttributeOptions(attrName, values);
+                          const list = getAttributeOptions(attrName, values, p);
                           if (!list.length) return null;
                           const key = getProductKey(p);
                           const currentValue = selectedAttrs[key]?.[attrName] || String(list[0]);
@@ -1373,7 +1446,9 @@ export default function Productos() {
                     )}
                     <>
                       <div className="fw-bold mb-3">
-                        {Number(p.precio ?? 0) <= 0 ? (
+                        {!isLoggedIn ? (
+                          <span className="text-muted small">Iniciá sesión para ver precios</span>
+                        ) : Number(p.precio ?? 0) <= 0 ? (
                           <Button variant="outline-primary" size="sm" onClick={() => openConsult(p)}>
                             Consultar
                           </Button>
@@ -1401,7 +1476,7 @@ export default function Productos() {
                             max={qtyMax}
                             defaultValue={1}
                             size="sm"
-                            disabled={Number(p.precio ?? 0) <= 0}
+                            disabled={!isLoggedIn || Number(p.precio ?? 0) <= 0}
                             onChange={(e) => {
                               const val = Math.max(1, Math.min(qtyMax, Number(e.target.value) || 1));
                               e.target.value = val;
@@ -1413,7 +1488,7 @@ export default function Productos() {
                           <Button
                             variant="primary"
                             size="sm"
-                            disabled={Number(p.precio ?? 0) <= 0}
+                            disabled={!isLoggedIn || Number(p.precio ?? 0) <= 0}
                             onClick={(e) => {
                               e.stopPropagation();
                               const input = e.currentTarget.parentElement.querySelector('input[type=\"number\"]');
@@ -1421,7 +1496,7 @@ export default function Productos() {
                               addToCart(p, Math.max(1, Math.min(qtyMax, qty)), attrs);
                             }}
                           >
-                            {Number(p.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito'}
+                            {!isLoggedIn ? 'Iniciá sesión' : (Number(p.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
                           </Button>
                         </InputGroup>
                       </div>

@@ -112,6 +112,9 @@ a{color:var(--link)} a:hover{opacity:.9}
 
 /* acciones derecha */
 .header-actions{ justify-self:end; }
+.header-user-name{
+  color:var(--primary) !important;
+}
 .cart-icon-btn{ line-height:1; font-size:1.6rem; color:var(--primary)!important; position:relative; }
 .cart-badge{ position:absolute; top:-6px; right:-10px; font-size:.62rem; background:var(--accent); color:#1b1b1b; border:1px solid rgba(0,0,0,.08); }
 .header-logout-btn{
@@ -258,13 +261,7 @@ a{color:var(--link)} a:hover{opacity:.9}
    FOOTER
    ======================================================= */
 .footer-modern{
-  background:linear-gradient(
-    90deg,
-    #ce2544 0%,
-    #ce2544 50%,
-    rgba(8,12,24,.98) 50%,
-    rgba(15,23,42,.98) 100%
-  );
+  background:#000;
   border-top:1px solid rgba(255,255,255,.08);
 }
 .footer-brand h5{ letter-spacing:.3px; }

@@ -1,38 +1,88 @@
 // src/pages/Home.jsx
+import { useEffect, useMemo, useState } from 'react';
 import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import velasImg from '../assets/Velas.png';
 import decoImg from '../assets/deco.png';
 import luminososImg from '../assets/luminosos.png';
+import api from '../lib/api';
 
 /** Hero con imágenes locales */
 const heroImages = [velasImg, decoImg, luminososImg];
 
 /** Mosaico principal de categorías (enlaza a /productos con filtros) */
 const tiles = [
-  { title: 'Cotillón / Velas', to: '/productos?cat=cotillon&subcat=velas', img: 'https://images.pexels.com/photos/3171837/pexels-photo-3171837.jpeg' },
-  { title: 'Globos y Piñatas', to: '/productos?cat=globos-y-pinatas', img: 'https://images.pexels.com/photos/17811/pexels-photo.jpg' },
-  { title: 'Guirnaldas LED', to: '/productos?cat=decoracion-led', img: 'https://images.pexels.com/photos/112460/pexels-photo-112460.jpeg' },
-  { title: 'Disfraces', to: '/productos?cat=disfraces', img: 'https://images.pexels.com/photos/134469/pexels-photo-134469.jpeg' },
-  { title: 'Descartables', to: '/productos?cat=descartables', img: 'https://images.pexels.com/photos/3952047/pexels-photo-3952047.jpeg' },
-  { title: 'Repostería', to: '/productos?cat=reposteria', img: 'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg' },
+  { key: 'tile-cotillon-velas', title: 'Cotillon / Velas', to: '/productos?cat=cotillon&subcat=velas', img: 'https://images.pexels.com/photos/3171837/pexels-photo-3171837.jpeg' },
+  { key: 'tile-globos-pinatas', title: 'Globos y Pinatas', to: '/productos?cat=globos-y-pinatas', img: 'https://images.pexels.com/photos/17811/pexels-photo.jpg' },
+  { key: 'tile-guirnaldas-led', title: 'Guirnaldas LED', to: '/productos?cat=decoracion-led', img: 'https://images.pexels.com/photos/112460/pexels-photo-112460.jpeg' },
+  { key: 'tile-disfraces', title: 'Disfraces', to: '/productos?cat=disfraces', img: 'https://images.pexels.com/photos/134469/pexels-photo-134469.jpeg' },
+  { key: 'tile-descartables', title: 'Descartables', to: '/productos?cat=descartables', img: 'https://images.pexels.com/photos/3952047/pexels-photo-3952047.jpeg' },
+  { key: 'tile-reposteria', title: 'Reposteria', to: '/productos?cat=reposteria', img: 'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg' },
 ];
+
+const heroOverrideKeys = ['hero-1', 'hero-2', 'hero-3'];
 
 /** Tiras adicionales de colecciones destacadas */
 const featured = [
-  { title: 'Números metalizados', to: '/productos?cat=globos-y-pinatas&subcat=numero-metalizados', img: 'https://images.pexels.com/photos/796606/pexels-photo-796606.jpeg' },
-  { title: 'Set de globos', to: '/productos?cat=globos-y-pinatas&subcat=set-de-globos', img: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg' },
-  { title: 'Platos y bandejas', to: '/productos?cat=descartables&subcat=platos', img: 'https://images.pexels.com/photos/5946080/pexels-photo-5946080.jpeg' },
-  { title: 'Maquillaje', to: '/productos?cat=disfraces&subcat=maquillaje', img: 'https://images.pexels.com/photos/1359301/pexels-photo-1359301.jpeg' },
+  { key: 'featured-numeros-metalizados', title: 'Numeros metalizados', to: '/productos?cat=globos-y-pinatas&subcat=numero-metalizados', img: 'https://images.pexels.com/photos/796606/pexels-photo-796606.jpeg' },
+  { key: 'featured-set-de-globos', title: 'Set de globos', to: '/productos?cat=globos-y-pinatas&subcat=set-de-globos', img: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg' },
+  { key: 'featured-platos-bandejas', title: 'Platos y bandejas', to: '/productos?cat=descartables&subcat=platos', img: 'https://images.pexels.com/photos/5946080/pexels-photo-5946080.jpeg' },
+  { key: 'featured-maquillaje', title: 'Maquillaje', to: '/productos?cat=disfraces&subcat=maquillaje', img: 'https://images.pexels.com/photos/1359301/pexels-photo-1359301.jpeg' },
 ];
 
 const Home = () => {
   const navigate = useNavigate();
+  const [imageOverrides, setImageOverrides] = useState({});
+  const [targetOverrides, setTargetOverrides] = useState({});
+
+  useEffect(() => {
+    let alive = true;
+    async function loadImages() {
+      try {
+        const data = await api.products.homeImages();
+        if (!alive) return;
+        setImageOverrides(data?.byKey || {});
+        setTargetOverrides(data?.byKeyTarget || {});
+      } catch {
+        if (!alive) return;
+        setImageOverrides({});
+        setTargetOverrides({});
+      }
+    }
+    loadImages();
+    return () => { alive = false; };
+  }, []);
+
+  const heroImagesResolved = useMemo(
+    () => heroImages.map((src, idx) => imageOverrides[heroOverrideKeys[idx]] || src),
+    [imageOverrides]
+  );
+
+  const tilesResolved = useMemo(
+    () =>
+      tiles.map((tile) => ({
+        ...tile,
+        img: imageOverrides[tile.key] || tile.img,
+      })),
+    [imageOverrides]
+  );
+
+  const featuredResolved = useMemo(
+    () =>
+      featured.map((item) => ({
+        ...item,
+        img: imageOverrides[item.key] || item.img,
+        to: targetOverrides[item.key] || item.to,
+      })),
+    [imageOverrides, targetOverrides]
+  );
+
+
   return (
     <main role="main">
       {/* HERO */}
       <Carousel variant="dark" className="mb-4" fade interval={4500}>
-        {heroImages.map((src, i) => (
+        {heroImagesResolved.map((src, i) => (
           <Carousel.Item key={i}>
             <div style={{ maxHeight: 440, overflow: 'hidden' }}>
               <img
@@ -123,12 +173,12 @@ const Home = () => {
           <Badge bg="secondary">Mayorista</Badge>
         </div>
         <Row className="g-3">
-          {tiles.map((t, i) => (
+          {tilesResolved.map((t, i) => (
             <Col key={i} xs={12} sm={6} md={4}>
               <Card as={Link} to={t.to} className="h-100 text-decoration-none shadow-sm">
                 <div style={{ height: 160, overflow: 'hidden' }}>
                   <Card.Img
-                    src={`${t.img}?auto=compress&cs=tinysrgb&w=1200`}
+                    src={t.img}
                     alt={t.title}
                     style={{ objectFit: 'cover', height: 160 }}
                   />
@@ -154,7 +204,7 @@ const Home = () => {
           </Button>
         </div>
         <Row className="g-3">
-          {featured.map((f, i) => (
+          {featuredResolved.map((f, i) => (
             <Col key={i} xs={12} sm={6} md={3}>
               <Card as={Link} to={f.to} className="h-100 text-decoration-none shadow-sm">
                 <div style={{ height: 130, overflow: 'hidden' }}>

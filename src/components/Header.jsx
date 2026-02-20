@@ -117,7 +117,7 @@ const Header = () => {
             <Nav className="align-items-center gap-3">
               {user ? (
                 <>
-                  <span className="text-white d-flex align-items-center gap-2">
+                  <span className="header-user-name d-flex align-items-center gap-2">
                     {(() => {
                       let a = user?.profile?.avatar || '';
                       if (a && a.startsWith('/')) a = `${API_BASE}${a}`;
@@ -137,15 +137,17 @@ const Header = () => {
                 </>
               )}
 
-              <Button
-                variant="link"
-                className="cart-icon-btn text-white position-relative p-0"
-                onClick={() => setShowCart(true)}
-                aria-label="Abrir carrito"
-              >
-                <FaShoppingBag />
-                {cantidad > 0 && <span className="badge cart-badge">{cantidad}</span>}
-              </Button>
+              {user && (
+                <Button
+                  variant="link"
+                  className="cart-icon-btn position-relative p-0"
+                  onClick={() => setShowCart(true)}
+                  aria-label="Abrir carrito"
+                >
+                  <FaShoppingBag />
+                  {cantidad > 0 && <span className="badge cart-badge">{cantidad}</span>}
+                </Button>
+              )}
             </Nav>
           </div>
         </Container>
@@ -162,10 +164,12 @@ const Header = () => {
             <FaSearch className="search-icon" />
           </button>
 
-          <button className="icon-btn cart" aria-label="Abrir carrito" onClick={() => setShowCart(true)}>
-            <FaShoppingBag />
-            {cantidad > 0 && <span className="badge cart-badge">{cantidad}</span>}
-          </button>
+          {user && (
+            <button className="icon-btn cart" aria-label="Abrir carrito" onClick={() => setShowCart(true)}>
+              <FaShoppingBag />
+              {cantidad > 0 && <span className="badge cart-badge">{cantidad}</span>}
+            </button>
+          )}
         </div>
 
         <div className="mobile-navrow">
@@ -237,7 +241,7 @@ const Header = () => {
         </Offcanvas.Body>
       </Offcanvas>
 
-      <CarritoOffcanvas show={showCart} handleClose={() => setShowCart(false)} />
+      {user && <CarritoOffcanvas show={showCart} handleClose={() => setShowCart(false)} />}
     </>
   );
 };
