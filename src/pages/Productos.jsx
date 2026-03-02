@@ -68,6 +68,7 @@ function mergeSpecialColorProducts(products = []) {
     const merged = {
       ...oro,
       id: `merged-${size}-${oro.id || 'hilo-oro-plata'}`,
+      sourceProductId: oro.id || oro._id || null,
       nombre: `Hilo Oro/Plata x${size}mts (Elegir Color)`,
       // Si una variante está activa y la otra no, mantener visible el producto combinado.
       activo: (oro?.activo ?? true) || (plata?.activo ?? true),

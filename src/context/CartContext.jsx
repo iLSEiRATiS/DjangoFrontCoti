@@ -56,6 +56,13 @@ export function CartProvider({ children }) {
 
   const addToCart = (product, qty = 1, attributes = {}) => {
     const cantidad = Math.max(1, Number(qty) || 1);
+    const resolvedProductId =
+      product.productId ||
+      product.sourceProductId ||
+      product.realProductId ||
+      product._realProductId ||
+      product.id ||
+      product._id;
     const baseId = product.id || product._id || `${product.categoria}-${product.nombre}`;
     const attrsKey = buildAttributesKey(attributes);
     const id = attrsKey ? `${baseId}::${attrsKey}` : baseId;
@@ -67,7 +74,7 @@ export function CartProvider({ children }) {
     } else {
       persist([...cartItems, {
         id,
-        productId: String(product.id || product._id || baseId),
+        productId: String(resolvedProductId || baseId),
         nombre: product.nombre || product.name || 'Producto',
         precio: Number(product.precio ?? product.price ?? 0),
         imagen: product.imagen || '',

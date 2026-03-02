@@ -24,8 +24,9 @@ export default function Checkout() {
         const name = it.nombre || it.name || it.title || 'Producto';
         const rawId = String(it.productId || it._id || it.id || '');
         const baseId = rawId.includes('::') ? rawId.split('::')[0] : rawId;
-        const mergedMatch = /^merged-(.+)$/i.exec(baseId);
-        const productId = String(mergedMatch?.[1] || baseId || '');
+        // Compatibilidad con carritos viejos que guardaron ids sintéticos merged-*
+        const mergedMatch = /^merged-(?:[^-]+)-(.+)$/i.exec(baseId);
+        const productId = String((mergedMatch && mergedMatch[1]) || baseId || '');
         const attributes = it.atributos || it.attributes || {};
         return { productId, name, price, qty, attributes };
       });
