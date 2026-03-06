@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Container, Row, Col, Button, Dropdown, Badge, Pagination, Form, Spinner, InputGroup, Modal
+  Container, Row, Col, Button, Dropdown, Badge, Pagination, Form, Spinner, InputGroup, Modal, Offcanvas
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -70,7 +70,7 @@ function mergeSpecialColorProducts(products = []) {
       id: `merged-${size}-${oro.id || 'hilo-oro-plata'}`,
       sourceProductId: oro.id || oro._id || null,
       nombre: `Hilo Oro/Plata x${size}mts (Elegir Color)`,
-      // Si una variante está activa y la otra no, mantener visible el producto combinado.
+      // Si una variante esta activa y la otra no, mantener visible el producto combinado.
       activo: (oro?.activo ?? true) || (plata?.activo ?? true),
       atributos: {
         ...(oro.atributos || {}),
@@ -90,8 +90,8 @@ function mergeSpecialColorProducts(products = []) {
 
 function fixSpecificGloboDuplicate(products = []) {
   if (!Array.isArray(products) || products.length < 2) return products;
-  const targetName = norm('Globo Metalizado Dorado 32" Sueltos X50 Unidades (ELEGIR NÚMERO)');
-  const targetCat = norm('Número Metalizados');
+  const targetName = norm('Globo Metalizado Dorado 32" Sueltos X50 Unidades (ELEGIR NUMERO)');
+  const targetCat = norm('Numero Metalizados');
   const targetTop = norm('Globos y Piñatas');
   const idxs = [];
   for (let i = 0; i < products.length; i += 1) {
@@ -106,7 +106,7 @@ function fixSpecificGloboDuplicate(products = []) {
   const i = idxs[1];
   copy[i] = {
     ...copy[i],
-    nombre: 'Globo Metalizado Dorado 32" Sueltos X1 Unidades (ELEGIR NÚMERO)',
+    nombre: 'Globo Metalizado Dorado 32" Sueltos X1 Unidades (ELEGIR NUMERO)',
     precio: 494,
     precioOriginal: 494,
     descuento: null,
@@ -116,10 +116,18 @@ function fixSpecificGloboDuplicate(products = []) {
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
+const normalizeImageUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('/')) return `${API_BASE}${raw}`;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return '';
+};
+
 const normalizeProductName = (name = '') => {
   const raw = String(name || '').trim();
   if (!raw) return raw;
-  // Corrige casos importados como "X0 Unidades (ELEGIR NÚMERO)" -> "X50 ..."
+  // Corrige casos importados como "X0 Unidades (ELEGIR NUMERO)" -> "X50 ..."
   return raw.replace(/X0(\s*Unidades\s*\(ELEGIR N[ÚU]MERO\))/i, 'X50$1');
 };
 
@@ -127,7 +135,7 @@ const shouldHideKnownBadGloboVariant = (name = '') => {
   const n = norm(name);
   return (
     n === norm('Globo Metalizado Dorado 32" x (ELEGIR NUMERO)') ||
-    n === norm('Globo Metalizado Dorado 32" Sueltos X5 Unidades (ELEGIR NÚMERO)')
+    n === norm('Globo Metalizado Dorado 32" Sueltos X5 Unidades (ELEGIR NUMERO)')
   );
 };
 
@@ -164,9 +172,9 @@ const TOP_CATEGORY_ORDER = [
   'Globos y Piñatas',
   'Guirnaldas y Decoración',
   'Decoracion para Tortas',
-  'Decoración Led',
+  'Decoracion Led',
   'Luminoso',
-  'Librería',
+  'Libreria',
   'Disfraces',
   'Descartables',
   'Reposteria',
@@ -177,8 +185,8 @@ const TOP_CATEGORY_ORDER = [
   'Papelera',
   'Articulos con Sonido',
   'Articulos en telgopor',
-  'Artículos Para Manualidades',
-  'Artículos Para Comunión',
+  'Articulos Para Manualidades',
+  'Articulos Para Comunion',
 ];
 
 const COTILLON_ORDER = [
@@ -194,12 +202,12 @@ const VELAS_ORDER = [
   'Velas Importadas',
   'Bengalas',
   'Velas con Luz',
-  'Vela Escudo de Fútbol',
+  'Vela Escudo de Futbol',
   'Velas Estrellita',
 ];
 
 const GLOBOS_ORDER = [
-  'Número Metalizados',
+  'Numero Metalizados',
   'Globos con Forma',
   'Set de Globos',
   '9 Pulgadas',
@@ -219,12 +227,12 @@ const DISFRACES_ORDER = [
   'Extensiones Pelucas y Pintura',
   'Maquillaje',
   'Caretas',
-  'Tutús',
+  'Tutus',
   'Alas',
 ];
 
 const DESCARTABLES_ORDER = [
-  'Bandejas Cartón',
+  'Bandejas Carton',
   'Bandejas Plasticas',
   'Manteles',
   'Cubiertos',
@@ -260,7 +268,7 @@ function buildTreeFromApi(categories = []) {
       if (n.children?.length) sortTree(n.children);
     });
   };
-  // Ordena subcategorías alfabéticamente, pero respeta el orden fijo del nivel raíz.
+  // Ordena subcategorias alfabeticamente, pero respeta el orden fijo del nivel raiz.
   sortTree(roots);
   const orderChildren = (parentSlug, orderList) => {
     const order = orderList.map((name) => slugify(name));
@@ -324,7 +332,7 @@ const leafSlugs = (node) => {
 function buildCategoryTreeFromProducts(products) {
   const map = new Map();
   for (const p of products) {
-    const c = p.category || p.categoria || 'Sin categoría';
+    const c = p.category || p.categoria || 'Sin categoria';
     const s = p.subcategory || p.subcategoria || 'General';
     if (!map.has(c)) map.set(c, new Set());
     map.get(c).add(s);
@@ -366,40 +374,90 @@ function buildCategoryIndex(categories = []) {
 function findCategoryIdForSelection(categories = [], catLabel, subLabel) {
   const byId = new Map();
   const byName = new Map();
+  const bySlug = new Map();
   categories.forEach((c) => {
     const id = c.id ?? c._id;
     if (!id) return;
-    const name = c.nombre || c.name || c.label || `Categoria ${id}`;
+    const name = c.nombre || c.name || c.label || c.slug || `Categoria ${id}`;
+    const slug = c.slug || slugify(name);
     const parent = c.parent || c.parent_id || c.parentId || null;
     byId.set(id, { id, name, parent });
     const key = norm(name);
+    const slugKey = norm(slug);
     if (!byName.has(key)) byName.set(key, []);
+    if (!bySlug.has(slugKey)) bySlug.set(slugKey, []);
     byName.get(key).push(id);
+    bySlug.get(slugKey).push(id);
   });
 
+  const cache = new Map();
+  const getPath = (id) => {
+    if (!id) return [];
+    if (cache.has(id)) return cache.get(id);
+    const node = byId.get(id);
+    if (!node) return [];
+    const parentPath = node.parent ? getPath(node.parent) : [];
+    const path = [...parentPath, node.name];
+    cache.set(id, path);
+    return path;
+  };
+
   const hasAncestorNamed = (id, ancestorName) => {
-    let current = byId.get(id);
-    while (current && current.parent) {
-      const parent = byId.get(current.parent);
-      if (!parent) break;
-      if (norm(parent.name) === norm(ancestorName)) return true;
-      current = parent;
+    if (!ancestorName) return false;
+    const normalizedAncestor = norm(ancestorName);
+    const path = getPath(id).map((x) => norm(x));
+    return path.includes(normalizedAncestor);
+  };
+
+  const candidateCandidates = (value) => {
+    if (!value) return [];
+    const normalized = norm(value);
+    const slug = norm(slugify(value));
+    const seen = new Set();
+    const out = [];
+    const append = (list) => {
+      if (!list) return;
+      for (const id of list) {
+        if (!seen.has(id)) {
+          seen.add(id);
+          out.push(id);
+        }
+      }
+    };
+    append(byName.get(normalized) || []);
+    append(bySlug.get(slug) || []);
+    for (const [key, ids] of byName.entries()) {
+      if (key.includes(normalized) || normalized.includes(key)) append(ids);
     }
-    return false;
+    for (const [key, ids] of bySlug.entries()) {
+      if (key.includes(slug) || slug.includes(key)) append(ids);
+    }
+    return out;
+  };
+
+  const bestMatchInCandidates = (candidates = [], wantParent) => {
+    if (!candidates.length) return null;
+    const normalizedParent = norm(wantParent);
+    if (!normalizedParent) return candidates[0];
+    const withParent = [];
+    const withoutParent = [];
+    for (const id of candidates) {
+      if (hasAncestorNamed(id, normalizedParent)) {
+        withParent.push(id);
+      } else {
+        withoutParent.push(id);
+      }
+    }
+    return withParent[0] || withoutParent[0] || candidates[0];
   };
 
   if (subLabel) {
-    const candidates = byName.get(norm(subLabel)) || [];
-    if (!catLabel) return candidates[0] || null;
-    for (const id of candidates) {
-      if (hasAncestorNamed(id, catLabel)) return id;
-    }
-    return candidates[0] || null;
+    const candidates = candidateCandidates(subLabel);
+    return bestMatchInCandidates(candidates, catLabel);
   }
 
   if (catLabel) {
-    const candidates = byName.get(norm(catLabel)) || [];
-    // prefer root category
+    const candidates = candidateCandidates(catLabel);
     for (const id of candidates) {
       const node = byId.get(id);
       if (node && !node.parent) return id;
@@ -409,27 +467,43 @@ function findCategoryIdForSelection(categories = [], catLabel, subLabel) {
   return null;
 }
 
-function applyFiltersToProducts(products, filters, skipCategoryFilter = false) {
+function applyFiltersToProducts(products, filters) {
   const q = norm((filters.q || '').trim());
   const cat = filters.category || '';
   const sub = filters.subcategory || '';
   return products
-    .filter((p) => (q ? norm(String(p.nombre || p.name || '')).includes(q) : true))
     .filter((p) => {
-      const priceOk = Number(p.precio ?? 0) > 0;
-      if (priceOk) return true;
-      // Sin precio: solo mostrar cuando hay categoría seleccionada que coincide
-      if (!cat) return false;
-      const path = p.categoria_path || [p.category || p.categoria];
-      const catMatch = matchInPath(path, cat);
-      const subMatch = sub ? matchInPath(path, sub) : true;
-      return catMatch && subMatch;
-    })
-    .filter((p) => (skipCategoryFilter ? true : (cat ? matchInPath(p.categoria_path || [p.category || p.categoria], cat) : true)))
-    .filter((p) => {
-      if (skipCategoryFilter) return true;
+      if (q) {
+        const fields = [
+          p.nombre,
+          p.descripcion,
+          p.descripcionCorta,
+          p.category,
+          p.categoria,
+          p.subcategoria,
+          p.subsubcategoria,
+          p.nombre ? String(p.nombre).toLowerCase() : '',
+          p.slug,
+          p._id,
+          p.id,
+          ...(Array.isArray(p.categoria_path) ? p.categoria_path : []),
+        ]
+          .filter(Boolean)
+          .map((f) => norm(f));
+        const tokens = q.split(/\s+/).filter(Boolean);
+        const matchTokens = tokens.every((token) =>
+          fields.some((field) => field.includes(token))
+        );
+        const idMatch = fields.some((field) => field.includes(q));
+        if (!matchTokens && !idMatch) {
+          return false;
+        }
+      }
+      const path = Array.isArray(p.categoria_path) && p.categoria_path.length
+        ? p.categoria_path
+        : [p.category || p.categoria || p.subcategoria || p.subcategory];
+      if (cat && !matchInPath(path, cat)) return false;
       if (!sub) return true;
-      const path = p.categoria_path || [p.subcategory || p.subcategoria];
       return matchInPath(path, sub) || sizeGroupMatch(p, sub);
     });
 }
@@ -475,7 +549,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
               value={value.q}
               onChange={(e) => onChange((prev) => ({ ...prev, q: e.target.value }))}
             />
-            <span className="input-group-text">🔎</span>
+            <span className="input-group-text">&#128269;</span>
           </div>
         </div>
 
@@ -604,7 +678,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
         </div>
 
         <div className="mt-3 small text-muted">
-          <div className="fw-semibold mb-1">Selección:</div>
+          <div className="fw-semibold mb-1">Seleccion:</div>
           <div>
             {value.category ? (
               <>
@@ -647,100 +721,122 @@ export default function Productos() {
   const isMobile = useMediaQuery('(max-width: 992px)');
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  const qs = new URLSearchParams(location.search);
+  const qs = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const [search, setSearch] = useState(qs.get('search') || '');
+  const [searchDebounced, setSearchDebounced] = useState((qs.get('search') || '').trim());
   const [sortKey, setSortKey] = useState(qs.get('sort') || 'relevancia');
   const [cat, setCat] = useState(qs.get('cat') || '');
   const [subcat, setSubcat] = useState(qs.get('subcat') || '');
   const [catTree, setCatTree] = useState(null);
+  const categoryIndex = useMemo(() => buildCategoryIndex(catTree || []), [catTree]);
   const [offers, setOffers] = useState([]);
   const [filterTick, setFilterTick] = useState(0);
   const [consultOpen, setConsultOpen] = useState(false);
   const [consultProduct, setConsultProduct] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailProduct, setDetailProduct] = useState(null);
+  const [detailImage, setDetailImage] = useState('');
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
+  const [detailQty, setDetailQty] = useState(1);
   const [consultForm, setConsultForm] = useState({
     name: '',
     email: '',
     phone: '',
-    message: ''
+    message: '',
   });
   const [selectedAttrs, setSelectedAttrs] = useState({});
-  const lastSearchRef = useRef(search);
-
   const [draftCat, setDraftCat] = useState(cat);
   const [draftSubcat, setDraftSubcat] = useState(subcat);
   const [draftFilterQ, setDraftFilterQ] = useState(search);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersSheetExpanded, setFiltersSheetExpanded] = useState(false);
+  const [remote, setRemote] = useState([]);
+  const [totalRemote, setTotalRemote] = useState(0);
+  const [pagesRemote, setPagesRemote] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const lastSearchRef = useRef(search);
+  const lastDebouncedRef = useRef(searchDebounced);
+  const searchDebounceRef = useRef(null);
+  const remoteRequestRef = useRef(0);
 
   const initialPer = Number(qs.get('per') || 12);
   const initialPage = Number(qs.get('page') || 1);
   const [per, setPer] = useState([12, 24, 48].includes(initialPer) ? initialPer : 12);
   const [page, setPage] = useState(initialPage > 0 ? initialPage : 1);
 
-  // Productos desde API (fuente principal)
-  const [remote, setRemote] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
-  const [totalRemote, setTotalRemote] = useState(0);
-  const [pagesRemote, setPagesRemote] = useState(1);
-
   // Sincroniza filtros con la URL
   useEffect(() => {
     const params = new URLSearchParams();
-    if (search.trim()) params.set('search', search.trim());
+    const debouncedSearch = searchDebounced.trim();
+    if (debouncedSearch) params.set('search', debouncedSearch);
     if (cat) params.set('cat', cat);
     if (subcat) params.set('subcat', subcat);
     if (sortKey !== 'relevancia') params.set('sort', sortKey);
     if (per !== 12) params.set('per', String(per));
     if (page !== 1) params.set('page', String(page));
     navigate({ pathname: '/productos', search: params.toString() }, { replace: true });
-  }, [search, cat, subcat, sortKey, per, page, navigate]);
+  }, [searchDebounced, cat, subcat, sortKey, per, page, navigate]);
 
-  // Actualiza estado al cambiar la URL (p. ej. búsquedas desde el header)
+  // Debounce de b?squeda: evita request en cada key
   useEffect(() => {
-    const qsLatest = new URLSearchParams(location.search);
-    const nextSearch = qsLatest.get('search') || '';
-    const nextCat = qsLatest.get('cat') || '';
-    const nextSubcat = qsLatest.get('subcat') || '';
-    const nextSort = qsLatest.get('sort') || 'relevancia';
-    const perParam = Number(qsLatest.get('per') || 12);
+    const searchValue = search.trim();
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearchDebounced(searchValue);
+    }, 260);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [search]);
+
+  useEffect(() => {
+    if (lastDebouncedRef.current === searchDebounced) return;
+    lastDebouncedRef.current = searchDebounced;
+    setPage(1);
+  }, [searchDebounced]);
+
+  // Actualiza estado al cambiar la URL (p. ej. b?squedas desde el header)
+  useEffect(() => {
+    const nextSearch = (qs.get('search') || '').trim();
+    const nextCat = qs.get('cat') || '';
+    const nextSubcat = qs.get('subcat') || '';
+    const nextSort = qs.get('sort') || 'relevancia';
+    const perParam = Number(qs.get('per') || 12);
     const nextPer = [12, 24, 48].includes(perParam) ? perParam : 12;
-    const pageParam = Number(qsLatest.get('page') || 1);
+    const pageParam = Number(qs.get('page') || 1);
     const nextPage = pageParam > 0 ? pageParam : 1;
 
     const searchChanged = nextSearch !== lastSearchRef.current;
     const categoryChanged = nextCat !== cat || nextSubcat !== subcat;
+
     setSearch(nextSearch);
+    setSearchDebounced(nextSearch);
     setCat(nextCat);
     setSubcat(nextSubcat);
     setSortKey(nextSort);
     setPer(nextPer);
     setPage(searchChanged || categoryChanged ? 1 : nextPage);
     lastSearchRef.current = nextSearch;
-  }, [location.search, cat, subcat]);
+  }, [location.search]);
 
+  // Carga categor?as para ?rbol y resoluci?n por id
   useEffect(() => {
     let alive = true;
-    async function loadCats() {
+    async function run() {
       try {
         const data = await api.products.categories();
-        const raw = Array.isArray(data?.results) ? data.results : data;
-        if (alive) setCatTree(Array.isArray(raw) ? raw : []);
+        const list = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+        if (alive) setCatTree(list);
       } catch {
         if (alive) setCatTree([]);
       }
     }
-    loadCats();
-    return () => { alive = false; };
+    run();
+    return () => {
+      alive = false;
+    };
   }, []);
-
-  const categoryIndex = useMemo(() => buildCategoryIndex(catTree || []), [catTree]);
-
-  useEffect(() => {
-    if (!isMobile) {
-      setDraftCat(cat);
-      setDraftSubcat(subcat);
-      setDraftFilterQ(search);
-    }
-  }, [cat, subcat, search, isMobile]);
 
   // Ofertas activas
   useEffect(() => {
@@ -755,16 +851,20 @@ export default function Productos() {
       }
     }
     loadOffers();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  // Carga remota con paginado (rápido)
+  // Carga remota con paginado (r?pido)
   useEffect(() => {
+    const requestId = ++remoteRequestRef.current;
     let alive = true;
     async function run() {
-      setErr(''); setLoading(true);
+      setErr('');
+      setLoading(true);
       try {
-        const q = search.trim() || undefined;
+        const q = searchDebounced.trim() || undefined;
         const categoryIdParam = findCategoryIdForSelection(catTree || [], cat, subcat);
         const data = await api.products.list({
           q,
@@ -772,23 +872,21 @@ export default function Productos() {
           limit: per,
           sort: sortKey,
           category_id: categoryIdParam || undefined,
-          category: categoryIdParam ? undefined : (subcat ? slugify(subcat) : (cat ? slugify(cat) : undefined))
+          category: categoryIdParam ? undefined : (cat ? slugify(cat) : undefined),
+          filter_tick: filterTick || undefined,
         });
+        if (!alive || requestId !== remoteRequestRef.current) return;
+
         const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-        const mapped = items.map(p => {
-          let img =
-            p.imageUrl ||
-            p.image_url ||
-            p.imagen ||
-            (Array.isArray(p.images) && p.images[0]) ||
-            `https://placehold.co/600x400?text=${encodeURIComponent(p.name || 'Producto')}`;
-          if (typeof img === 'string') {
-            if (img.startsWith('/')) img = `${API_BASE}${img}`;
-            else if (!img.startsWith('http://') && !img.startsWith('https://')) img = '';
-          } else {
-            img = '';
-          }
-          const offer = offers.find(o => {
+        const mapped = items.map((p) => {
+          const remoteImages = Array.isArray(p.images) ? p.images : [];
+          const normalizedImages = remoteImages
+            .map((x) => normalizeImageUrl(x))
+            .filter(Boolean);
+          const singleFallback = normalizeImageUrl(p.imageUrl || p.image_url || p.imagen || '');
+          const images = [...new Set([singleFallback, ...normalizedImages].filter(Boolean))];
+          const img = images[0] || `https://placehold.co/600x400?text=${encodeURIComponent(p.name || 'Producto')}`;
+          const offer = offers.find((o) => {
             const pid = o.producto ?? o.product;
             const cid = o.categoria ?? o.category;
             const now = Date.now();
@@ -807,14 +905,16 @@ export default function Productos() {
             descuentoPct = Math.max(0, Math.round((1 - (precioBase / precioOriginal)) * 100));
           }
           const precio = descuentoPct ? +(precioOriginal * (1 - descuentoPct / 100)).toFixed(2) : precioBase;
-          const descuento = descuentoPct ? { percent: descuentoPct, ...(p.discount || p.descuento || {}), offerId: offer?.id || offer?._id } : null;
+          const descuento = descuentoPct
+            ? { percent: descuentoPct, ...(p.discount || p.descuento || {}), offerId: offer?.id || offer?._id }
+            : null;
           const categoryObj = p.categoria || p.category || null;
           const rawAttributes = p.attributes || p.atributos || {};
           const rawAttributesStock = p.attributes_stock || p.atributos_stock || {};
           const attributes = Object.entries(rawAttributes).reduce((acc, [k, v]) => {
             if (!k) return acc;
             const values = Array.isArray(v) ? v : (v ? [v] : []);
-            const cleaned = values.map(x => String(x).trim()).filter(Boolean);
+            const cleaned = values.map((x) => String(x).trim()).filter(Boolean);
             if (cleaned.length) acc[k] = cleaned;
             return acc;
           }, {});
@@ -830,6 +930,7 @@ export default function Productos() {
             precioOriginal,
             descuento,
             imagen: img,
+            imagenes: images.length ? images : [img],
             categoria: categoryName || 'General',
             categoria_id: categoryId,
             categoria_slug: categoryObj?.slug || (categoryName ? slugify(categoryName) : 'general'),
@@ -842,58 +943,52 @@ export default function Productos() {
             stock: Number(p.stock ?? 0),
           };
         });
-        if (alive) {
-          const mergedMapped = fixSpecificGloboDuplicate(mergeSpecialColorProducts(mapped));
-          const cleanedMapped = dedupeSpecificGloboX1(mergedMapped);
-          setRemote(cleanedMapped.filter((p) => p.activo && !shouldHideKnownBadGloboVariant(p.nombre)));
-          setTotalRemote(Number(data?.total) || mergedMapped.length || 0);
-          setPagesRemote(Number(data?.pages) || Math.max(1, Math.ceil((Number(data?.total) || mergedMapped.length || 0) / per)));
-        }
+        const mergedMapped = fixSpecificGloboDuplicate(mergeSpecialColorProducts(mapped));
+        const cleanedMapped = dedupeSpecificGloboX1(mergedMapped);
+        if (!alive || requestId !== remoteRequestRef.current) return;
+        setRemote(cleanedMapped.filter((p) => p.activo && !shouldHideKnownBadGloboVariant(p.nombre)));
+        setTotalRemote(Number(data?.total) || cleanedMapped.length || 0);
+        setPagesRemote(
+          Number(data?.pages) || Math.max(1, Math.ceil((Number(data?.total) || cleanedMapped.length || 0) / per))
+        );
       } catch (e) {
-        if (alive) setErr(e?.message || 'No se pudieron cargar productos');
+        if (alive && requestId === remoteRequestRef.current) {
+          setErr(e?.message || 'No se pudieron cargar productos');
+          setRemote([]);
+          setTotalRemote(0);
+          setPagesRemote(1);
+        }
       } finally {
-        if (alive) setLoading(false);
+        if (alive && requestId === remoteRequestRef.current) {
+          setLoading(false);
+        }
       }
     }
     run();
-    return () => { alive = false; };
-  }, [search, page, per, categoryIndex, cat, subcat, filterTick]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      const tag = (e.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.altKey || e.ctrlKey || e.metaKey) return;
-      if (e.key === 'ArrowLeft') { e.preventDefault(); setPage(prev => Math.max(1, prev - 1)); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); setPage(prev => prev + 1); }
+    return () => {
+      alive = false;
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [searchDebounced, page, per, categoryIndex, cat, subcat, filterTick, sortKey, offers.length]);
 
   // Fallback local (solo si falla backend)
-  const localFiltered = useMemo(() => {
-    const q = norm(search);
-    const matchesText = (p) => {
-      const fields = [p.nombre, p.categoria, p.subcategoria, p.subsubcategoria]
-        .filter(Boolean).map(norm);
-      if (!q) return true;
-      return fields.some(f => f.includes(q));
-    };
-    return productosData.filter(p => matchesText(p)).sort(SORTERS[sortKey]?.fn || SORTERS.relevancia.fn);
-  }, [search, sortKey]);
-
+  const localFiltered = useMemo(
+    () => applyFiltersToProducts(productosData, { q: searchDebounced, category: cat, subcategory: subcat }),
+    [searchDebounced, cat, subcat]
+  );
   const usingFallback = !!err;
   const baseListRaw = usingFallback ? localFiltered : remote;
   const baseList = useMemo(() => dedupeSpecificGloboX1(baseListRaw), [baseListRaw]);
-  const appliedFilters = { q: search, category: cat, subcategory: subcat };
+  const appliedFilters = { q: searchDebounced, category: cat, subcategory: subcat };
   const draftFilters = { q: draftFilterQ, category: draftCat, subcategory: draftSubcat };
-  const skipCategoryFilter = !usingFallback && !isSizeGroupLabel(subcat);
-  const filteredByFacets = applyFiltersToProducts(baseList, appliedFilters, skipCategoryFilter);
+  const filteredByFacets = usingFallback
+    ? applyFiltersToProducts(baseList, appliedFilters)
+    : baseList;
   const sortedByFacets = useMemo(() => {
+    if (!usingFallback) return filteredByFacets;
     const sorter = SORTERS[sortKey]?.fn;
     if (!sorter || sortKey === 'relevancia') return filteredByFacets;
     return [...filteredByFacets].sort(sorter);
-  }, [filteredByFacets, sortKey]);
+  }, [filteredByFacets, sortKey, usingFallback]);
   const categoryTree = useMemo(() => {
     if (catTree?.length) {
       const byId = new Map();
@@ -926,11 +1021,11 @@ export default function Productos() {
         'Velas Importadas',
         'Bengalas',
         'Velas con Luz',
-        'Vela Escudo de Fútbol',
+        'Vela Escudo de Futbol',
         'Velas Estrellita',
       ];
       const globosOrder = [
-        'Número Metalizados',
+        'Numero Metalizados',
         'Globos con Forma',
         'Set de Globos',
         '9 Pulgadas',
@@ -945,11 +1040,11 @@ export default function Productos() {
         'Extensiones Pelucas y Pintura',
         'Maquillaje',
         'Caretas',
-        'Tutús',
+        'Tutus',
         'Alas',
       ];
       const descartablesOrder = [
-        'Bandejas Cartón',
+        'Bandejas Carton',
         'Bandejas Plasticas',
         'Manteles',
         'Cubiertos',
@@ -965,7 +1060,7 @@ export default function Productos() {
         'Ballina',
         'Dewey',
         'Comestibles',
-        'Placas Plásticas',
+        'Placas Plasticas',
         'Decoracion Tortas-Topper',
         'Moldes',
       ];
@@ -1095,6 +1190,7 @@ export default function Productos() {
   const handleAppliedChange = (updater) => {
     const next = typeof updater === 'function' ? updater(appliedFilters) : updater;
     setSearch(next.q ?? '');
+    setSearchDebounced((next.q || '').trim());
     setCat(next.category ?? '');
     setSubcat(next.subcategory ?? '');
     setPage(1);
@@ -1107,6 +1203,12 @@ export default function Productos() {
     setDraftSubcat(next.subcategory ?? '');
   };
 
+  useEffect(() => {
+    setDraftFilterQ(searchDebounced);
+    setDraftCat(cat);
+    setDraftSubcat(subcat);
+  }, [searchDebounced, cat, subcat]);
+
   const clearAll = () => {
     const empty = { q: '', category: '', subcategory: '' };
     if (isMobile) {
@@ -1117,12 +1219,14 @@ export default function Productos() {
       handleAppliedChange(empty);
     }
   };
-  const total = totalRemote || filteredByFacets.length;
-  const totalPages = Math.max(1, pagesRemote || 1);
+  const total = usingFallback ? filteredByFacets.length : totalRemote;
+  const totalPages = usingFallback ? Math.max(1, Math.ceil(total / per)) : Math.max(1, pagesRemote || 1);
   const safePage = Math.min(page, totalPages);
   const startIdx = total === 0 ? 0 : ((safePage - 1) * per + 1);
-  const endIdx = total === 0 ? 0 : ((safePage - 1) * per + filteredByFacets.length);
-  const paginated = sortedByFacets;
+  const paginated = usingFallback
+    ? sortedByFacets.slice((safePage - 1) * per, safePage * per)
+    : sortedByFacets;
+  const endIdx = total === 0 ? 0 : ((safePage - 1) * per + paginated.length);
 
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
@@ -1209,12 +1313,24 @@ export default function Productos() {
     return (
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div className="text-muted small">
-          Página {safePage} de {totalPages} · {total} productos
+          Pagina {safePage} de {totalPages} · {total} productos
         </div>
         <Pagination className="mb-0">{items}</Pagination>
       </div>
     );
   };
+
+  const openFiltersSheet = () => {
+    setDraftFilterQ(searchDebounced);
+    setDraftCat(cat);
+    setDraftSubcat(subcat);
+    setFiltersSheetExpanded(false);
+    setFiltersOpen(true);
+  };
+
+  useEffect(() => {
+    if (!filtersOpen) setFiltersSheetExpanded(false);
+  }, [filtersOpen]);
 
   const openConsult = (product) => {
     setConsultProduct(product);
@@ -1225,6 +1341,32 @@ export default function Productos() {
       message: product?.nombre ? `Consulta por: ${product.nombre}` : ''
     });
     setConsultOpen(true);
+  };
+
+  const openDetail = (product) => {
+    const imgs = Array.isArray(product?.imagenes) && product.imagenes.length
+      ? product.imagenes
+      : [product?.imagen].filter(Boolean);
+    setDetailProduct(product);
+    setDetailImage(imgs[0] || '');
+    setDetailImageIndex(0);
+    setDetailQty(1);
+    setDetailOpen(true);
+  };
+
+  const closeDetail = () => {
+    setDetailOpen(false);
+    setDetailProduct(null);
+    setDetailImage('');
+    setDetailImageIndex(0);
+  };
+
+  const moveDetailImage = (step) => {
+    if (!detailProduct?.imagenes?.length) return;
+    const total = detailProduct.imagenes.length;
+    const next = ((detailImageIndex + step) % total + total) % total;
+    setDetailImageIndex(next);
+    setDetailImage(detailProduct.imagenes[next] || '');
   };
 
   const getProductKey = (p) => String(p?.id || `${p?.categoria}-${p?.nombre}`);
@@ -1283,7 +1425,7 @@ export default function Productos() {
 
   const submitConsult = (e) => {
     e.preventDefault();
-    // Placeholder: integración futura (email / WhatsApp / backend)
+    // Placeholder: integracion futura (email / WhatsApp / backend)
     setConsultOpen(false);
   };
 
@@ -1300,14 +1442,8 @@ export default function Productos() {
             <button
               className="btn btn-dark"
               type="button"
-              data-bs-toggle="offcanvas"
-              data-bs-target="#filtersOffcanvas"
               aria-controls="filtersOffcanvas"
-              onClick={() => {
-                setDraftFilterQ(search);
-                setDraftCat(cat);
-                setDraftSubcat(subcat);
-              }}
+              onClick={openFiltersSheet}
             >
               Filtrar
             </button>
@@ -1331,9 +1467,9 @@ export default function Productos() {
             className="catalog-select"
             aria-label="Cantidad por pagina"
           >
-            <option value={12}>12 / pág</option>
-            <option value={24}>24 / pág</option>
-            <option value={48}>48 / pág</option>
+            <option value={12}>12 / pag</option>
+            <option value={24}>24 / pag</option>
+            <option value={48}>48 / pag</option>
           </Form.Select>
         </div>
       </div>
@@ -1365,7 +1501,7 @@ export default function Productos() {
           const chips = [];
           if (cat) chips.push(cat);
           if (subcat) chips.push(subcat);
-          if (search.trim()) chips.push(`"${search.trim()}"`);
+          if (searchDebounced.trim()) chips.push(`"${searchDebounced.trim()}"`);
 
           if (!chips.length) return null;
           return (
@@ -1373,7 +1509,11 @@ export default function Productos() {
               {chips.map((c, i) => (
                 <Badge key={`${c}-${i}`} bg="warning" text="dark" className="filter-chip">{c}</Badge>
               ))}
-              <Button size="sm" variant="outline-secondary" onClick={() => { setSearch(''); setCat(''); setSubcat(''); setPage(1); }}>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                onClick={() => handleAppliedChange({ q: '', category: '', subcategory: '' })}
+              >
                 Quitar filtros
               </Button>
             </div>
@@ -1393,7 +1533,18 @@ export default function Productos() {
 
               return (
               <Col key={p.id || `${p.categoria}-${p.nombre}`} xs={6} md={4} lg={3}>
-                <div className="product-card h-100 d-flex flex-column">
+                <div
+                  className="product-card h-100 d-flex flex-column"
+                  onClick={() => openDetail(p)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openDetail(p);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="product-img-wrap">
                     {p.imagen ? (
                       <img
@@ -1433,6 +1584,7 @@ export default function Productos() {
                                     [key]: { ...(prev[key] || {}), [attrName]: nextVal }
                                   }));
                                 }}
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 {list.map((v) => (
                                   <option key={`${attrName}-${v}`} value={String(v)}>
@@ -1448,9 +1600,16 @@ export default function Productos() {
                     <>
                       <div className="fw-bold mb-3">
                         {!isLoggedIn ? (
-                          <span className="text-muted small">Iniciá sesión para ver precios</span>
+                          <span className="text-muted small">Inicia sesion para ver precios</span>
                         ) : Number(p.precio ?? 0) <= 0 ? (
-                          <Button variant="outline-primary" size="sm" onClick={() => openConsult(p)}>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openConsult(p);
+                            }}
+                          >
                             Consultar
                           </Button>
                         ) : p.descuento?.percent ? (
@@ -1497,7 +1656,7 @@ export default function Productos() {
                               addToCart(p, Math.max(1, Math.min(qtyMax, qty)), attrs);
                             }}
                           >
-                            {!isLoggedIn ? 'Iniciá sesión' : (Number(p.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
+                            {!isLoggedIn ? 'Inicia sesion' : (Number(p.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
                           </Button>
                         </InputGroup>
                       </div>
@@ -1527,24 +1686,46 @@ export default function Productos() {
         </Col>
       </Row>
 
-      <div
-        className="offcanvas offcanvas-bottom filters-sheet"
-        tabIndex="-1"
+      {isMobile && (
+        <button
+          type="button"
+          className="catalog-mobile-filters-trigger"
+          aria-controls="filtersOffcanvas"
+          aria-label="Abrir filtros"
+          onClick={openFiltersSheet}
+        >
+          Filtros
+        </button>
+      )}
+
+      <Offcanvas
+        show={filtersOpen}
+        onHide={() => setFiltersOpen(false)}
+        placement="bottom"
         id="filtersOffcanvas"
-        aria-labelledby="filtersOffcanvasLabel"
+        className={`filters-sheet ${filtersSheetExpanded ? 'is-expanded' : ''}`}
       >
         <div className="offcanvas-header">
           <h5 className="offcanvas-title fw-bold" id="filtersOffcanvasLabel">
             Filtros
           </h5>
-          <button type="button" className="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar" />
+          <button
+            type="button"
+            className="filters-sheet-expand-btn"
+            onClick={() => setFiltersSheetExpanded((prev) => !prev)}
+            aria-label={filtersSheetExpanded ? 'Reducir panel de filtros' : 'Expandir panel de filtros'}
+            title={filtersSheetExpanded ? 'Reducir' : 'Expandir'}
+          >
+            {filtersSheetExpanded ? 'Menos' : 'Mas'}
+          </button>
+          <button type="button" className="btn-close" aria-label="Cerrar" onClick={() => setFiltersOpen(false)} />
         </div>
         <div className="offcanvas-body d-flex flex-column gap-3">
           <FiltersSidebar
             tree={categoryTree}
             products={baseList}
-            value={appliedFilters}
-            onChange={handleAppliedChange}
+            value={isMobile ? draftFilters : appliedFilters}
+            onChange={isMobile ? handleDraftChange : handleAppliedChange}
             onClear={clearAll}
             isMobile={true}
           />
@@ -1552,14 +1733,9 @@ export default function Productos() {
             <button
               type="button"
               className="btn btn-dark"
-              data-bs-dismiss="offcanvas"
               onClick={() => {
                 handleAppliedChange(draftFilters);
-                const el = document.getElementById('filtersOffcanvas');
-                if (el && window.bootstrap?.Offcanvas) {
-                  const inst = window.bootstrap.Offcanvas.getInstance(el) || new window.bootstrap.Offcanvas(el);
-                  inst.hide();
-                }
+                setFiltersOpen(false);
               }}
             >
               Aplicar filtros
@@ -1568,20 +1744,161 @@ export default function Productos() {
               type="button"
               className="btn btn-outline-secondary"
               onClick={() => {
-                setDraftFilterQ(search);
+                setDraftFilterQ(searchDebounced);
                 setDraftCat(cat);
                 setDraftSubcat(subcat);
+                setFiltersOpen(false);
               }}
-              data-bs-dismiss="offcanvas"
             >
               Cancelar
             </button>
           </div>
           <div className="text-muted small">
-            En mobile los cambios no se aplican hasta tocar <b>“Aplicar filtros”</b>.
+            En mobile los cambios no se aplican hasta tocar <b>"Aplicar filtros"</b>.
           </div>
         </div>
-      </div>
+      </Offcanvas>
+
+      <Modal
+        show={detailOpen}
+        onHide={closeDetail}
+        size="xl"
+        centered={!isMobile}
+        fullscreen={isMobile ? true : undefined}
+        scrollable
+        className="product-detail-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="text-truncate">{detailProduct?.nombre || 'Producto'}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {detailProduct && (
+            <Row className="g-3">
+              <Col lg={7}>
+                <div className="detail-gallery">
+                  <div className="detail-thumbs">
+                    {(detailProduct.imagenes || []).map((img, idx) => (
+                      <button
+                        key={`detail-thumb-${idx}`}
+                        type="button"
+                        className={`detail-thumb-btn ${detailImage === img ? 'is-active' : ''}`}
+                        onClick={() => {
+                          setDetailImageIndex(idx);
+                          setDetailImage(img);
+                        }}
+                      >
+                        <img src={img} alt={`${detailProduct.nombre} ${idx + 1}`} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="detail-main-image">
+                    {detailImage ? (
+                      <>
+                        {(detailProduct.imagenes || []).length > 1 && (
+                          <button type="button" className="detail-main-nav detail-main-prev" onClick={() => moveDetailImage(-1)}>‹</button>
+                        )}
+                        <img src={detailImage} alt={detailProduct.nombre} />
+                        {(detailProduct.imagenes || []).length > 1 && (
+                          <button type="button" className="detail-main-nav detail-main-next" onClick={() => moveDetailImage(1)}>›</button>
+                        )}
+                      </>
+                    ) : (
+                      <div className="detail-empty-image">Sin imagen</div>
+                    )}
+                  </div>
+                </div>
+                {!!(detailProduct.imagenes || []).length && (
+                  <div className="small text-muted mt-1">
+                    Foto {detailImageIndex + 1} de {(detailProduct.imagenes || []).length}
+                  </div>
+                )}
+              </Col>
+              <Col lg={5}>
+                <div className="detail-info">
+                  <div className="text-muted small mb-1">{detailProduct.categoria || '-'}</div>
+                  <h4 className="detail-title mb-2">{detailProduct.nombre}</h4>
+                  <div className="fw-bold mb-3">
+                    {!isLoggedIn ? (
+                      <span className="text-muted small">Inicia sesion para ver precios</span>
+                    ) : Number(detailProduct.precio ?? 0) <= 0 ? (
+                      <Button variant="outline-primary" size="sm" onClick={() => openConsult(detailProduct)}>
+                        Consultar
+                      </Button>
+                    ) : detailProduct.descuento?.percent ? (
+                      <div>
+                        <div className="text-muted text-decoration-line-through small">
+                          {money.format(Number(detailProduct.precioOriginal ?? 0))}
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                          <span>{money.format(Number(detailProduct.precio ?? 0))}</span>
+                          <Badge bg="success">-{detailProduct.descuento.percent}%</Badge>
+                        </div>
+                      </div>
+                    ) : (
+                      money.format(Number(detailProduct.precio ?? 0))
+                    )}
+                  </div>
+
+                  {detailProduct.atributos && Object.keys(detailProduct.atributos).length > 0 && (
+                    <div className="mb-2">
+                      {Object.entries(detailProduct.atributos).map(([attrName, values]) => {
+                        const list = getAttributeOptions(attrName, values, detailProduct);
+                        if (!list.length) return null;
+                        const key = getProductKey(detailProduct);
+                        const currentValue = selectedAttrs[key]?.[attrName] || String(list[0]);
+                        return (
+                          <div key={attrName} className="mb-2">
+                            <div className="small text-muted">{attrName}</div>
+                            <Form.Select
+                              size="sm"
+                              value={currentValue}
+                              onChange={(e) => {
+                                const nextVal = e.target.value;
+                                setSelectedAttrs((prev) => ({
+                                  ...prev,
+                                  [key]: { ...(prev[key] || {}), [attrName]: nextVal }
+                                }));
+                              }}
+                            >
+                              {list.map((v) => (
+                                <option key={`${attrName}-modal-${v}`} value={String(v)}>{v}</option>
+                              ))}
+                            </Form.Select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <div className="small text-muted mb-1">Cantidad</div>
+                    <InputGroup style={{ maxWidth: 170 }}>
+                      <Form.Control
+                        type="number"
+                        min={1}
+                        value={detailQty}
+                        onChange={(e) => setDetailQty(Math.max(1, Number(e.target.value) || 1))}
+                      />
+                    </InputGroup>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    className={isMobile ? 'w-100' : ''}
+                    disabled={!isLoggedIn || Number(detailProduct.precio ?? 0) <= 0}
+                    onClick={() => {
+                      const attrs = getSelectedAttributes(detailProduct);
+                      addToCart(detailProduct, detailQty, attrs);
+                    }}
+                  >
+                    {!isLoggedIn ? 'Inicia sesion' : (Number(detailProduct.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
+                  </Button>
+                </div>
+              </Col>
+            </Row>
+          )}
+        </Modal.Body>
+      </Modal>
 
       <Modal show={consultOpen} onHide={closeConsult} centered>
         <Form onSubmit={submitConsult}>
@@ -1652,3 +1969,7 @@ export default function Productos() {
     </Container>
   );
 }
+
+
+
+

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Table, Alert, Spinner } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 
@@ -13,10 +14,18 @@ const STATUS_LABELS = {
 };
 
 export default function Orders() {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [rows, setRows] = useState([]);
+
+  const handleAuthError = (error) => {
+    if (!error?.isAuthError) return false;
+    logout?.();
+    navigate('/login?redirect=/orders', { replace: true });
+    return true;
+  };
 
   const translateStatus = (raw) => {
     const s = (raw || '').trim().toLowerCase();
@@ -39,6 +48,7 @@ export default function Orders() {
         const data = await api.orders.mine(token);
         if (alive) setRows(Array.isArray(data?.orders) ? data.orders : []);
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setErr(e?.message || 'No se pudieron cargar los pedidos');
       } finally {
         if (alive) setLoading(false);

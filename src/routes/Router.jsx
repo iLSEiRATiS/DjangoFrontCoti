@@ -6,6 +6,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 const Home = lazy(() => import('../pages/Home'));
 const Productos = lazy(() => import('../pages/Productos'));
+const ProductDetail = lazy(() => import('../pages/ProductDetail'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const Carrito = lazy(() => import('../pages/Carrito'));
@@ -29,6 +30,7 @@ const AppRouter = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/productos" element={<Productos />} />
+          <Route path="/productos/:id" element={<ProductDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/carrito" element={<Carrito />} />

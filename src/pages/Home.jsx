@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import velasImg from '../assets/Velas.png';
-import decoImg from '../assets/deco.png';
-import luminososImg from '../assets/luminosos.png';
+import velasImg from '../assets/velas-optimized.webp';
+import decoImg from '../assets/deco-optimized.webp';
+import luminososImg from '../assets/luminosos-optimized.webp';
 import api from '../lib/api';
 
 /** Hero con imágenes locales */
@@ -89,6 +89,8 @@ const Home = () => {
                 src={src}
                 alt={`Slide ${i + 1}`}
                 className="d-block w-100"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
                 style={{ objectFit: 'cover', height: 440 }}
               />
             </div>
@@ -180,6 +182,8 @@ const Home = () => {
                   <Card.Img
                     src={t.img}
                     alt={t.title}
+                    loading="lazy"
+                    decoding="async"
                     style={{ objectFit: 'cover', height: 160 }}
                   />
                 </div>
@@ -211,6 +215,8 @@ const Home = () => {
                   <Card.Img
                     src={`${f.img}?auto=compress&cs=tinysrgb&w=1000`}
                     alt={f.title}
+                    loading="lazy"
+                    decoding="async"
                     style={{ objectFit: 'cover', height: 130 }}
                   />
                 </div>

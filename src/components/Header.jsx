@@ -15,7 +15,7 @@ import { FaSearch, FaShoppingBag, FaBars } from 'react-icons/fa';
 
 import { useCart } from '../context/CartContext';
 import CarritoOffcanvas from './CarritoOffcanvas';
-import logo from '../assets/logo-coti.png';
+import logo from '../assets/logo-coti-optimized.webp';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../lib/api';
 
@@ -88,7 +88,7 @@ const Header = () => {
         <Container fluid className="align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-3">
             <Navbar.Brand as={Link} to="/" className="brand d-flex align-items-center m-0">
-              <img src={logo} alt="CotiStore" className="brand-logo" />
+              <img src={logo} alt="CotiStore" className="brand-logo" loading="eager" decoding="async" />
             </Navbar.Brand>
             <Nav className="align-items-center gap-3 desktop-main-nav">
               <Nav.Link as={Link} to="/" className="nav-link-plain">Inicio</Nav.Link>
@@ -157,19 +157,17 @@ const Header = () => {
       <header className={`mobile-header d-md-none${hideMobileHeader ? ' is-hidden' : ''}`}>
         <div className="mobile-topbar">
           <Link to="/" className="mobile-brand">
-            <img src={logo} alt="CotiStore" />
+            <img src={logo} alt="CotiStore" loading="eager" decoding="async" />
           </Link>
 
           <button className="icon-btn" aria-label="Buscar" onClick={() => setShowSearch(true)}>
             <FaSearch className="search-icon" />
           </button>
 
-          {user && (
-            <button className="icon-btn cart" aria-label="Abrir carrito" onClick={() => setShowCart(true)}>
-              <FaShoppingBag />
-              {cantidad > 0 && <span className="badge cart-badge">{cantidad}</span>}
-            </button>
-          )}
+          <button className="icon-btn cart" aria-label="Abrir carrito" onClick={() => setShowCart(true)}>
+            <FaShoppingBag />
+            {cantidad > 0 && <span className="badge cart-badge">{cantidad}</span>}
+          </button>
         </div>
 
         <div className="mobile-navrow">
@@ -241,7 +239,7 @@ const Header = () => {
         </Offcanvas.Body>
       </Offcanvas>
 
-      {user && <CarritoOffcanvas show={showCart} handleClose={() => setShowCart(false)} />}
+      <CarritoOffcanvas show={showCart} handleClose={() => setShowCart(false)} />
     </>
   );
 };

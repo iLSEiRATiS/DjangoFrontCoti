@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Tabs, Tab, Form, Row, Col, Button, Alert, Spinner, Table } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import api, { API_BASE } from '../lib/api';
@@ -15,7 +15,8 @@ const safeAvatarSrc = (url) => {
 };
 
 export default function Account() {
-  const { token, user, login } = useAuth();
+  const { token, user, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('profile');
   const isAdmin = user?.role === 'admin';
   const PRODUCT_HEADERS = [
@@ -136,6 +137,13 @@ export default function Account() {
   const [importMsg, setImportMsg] = useState('');
   const [previewRows, setPreviewRows] = useState([]);
 
+  const handleAuthError = (error) => {
+    if (!error?.isAuthError) return false;
+    logout?.();
+    navigate('/login?redirect=/account', { replace: true });
+    return true;
+  };
+
   useEffect(() => {
     let alive = true;
     async function boot() {
@@ -155,6 +163,7 @@ export default function Account() {
           });
         }
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setErr(e?.message || 'No se pudo cargar el perfil');
       } finally {
         if (alive) setLoading(false);
@@ -167,6 +176,7 @@ export default function Account() {
         const rows = Array.isArray(data?.orders) ? data.orders : [];
         if (alive) setOrders(rows.slice(0, 5));
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setOErr(e?.message || 'No se pudieron cargar los pedidos');
       } finally {
         if (alive) setOLoading(false);
@@ -203,6 +213,7 @@ export default function Account() {
       }
       if (updated) login({ token, user: { ...user, ...updated } });
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo actualizar el perfil');
     } finally {
       setSavingProfile(false);
@@ -219,6 +230,7 @@ export default function Account() {
         login({ token, user: { ...user, ...updated } });
       }
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo quitar el avatar');
     } finally {
       setSavingProfile(false);
@@ -236,6 +248,7 @@ export default function Account() {
       const { user: updated } = await api.account.updateProfile(token, { shipping: ship });
       if (updated) login({ token, user: { ...user, ...updated } });
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo guardar la dirección');
     } finally {
       setSavingShip(false);
@@ -258,6 +271,7 @@ export default function Account() {
       setPwd({ currentPassword: '', newPassword: '', confirm: '' });
       window.alert('Contraseña actualizada');
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo cambiar la contraseña');
     } finally {
       setSavingPwd(false);
@@ -312,6 +326,7 @@ export default function Account() {
       setImportMsg(summary);
       if (res?.errors?.length) setImportErr(res.errors.join('; '));
     } catch (e) {
+      if (handleAuthError(e)) return;
       setImportErr(e?.message || 'No se pudo importar el XLSX');
     } finally {
       setImporting(false);

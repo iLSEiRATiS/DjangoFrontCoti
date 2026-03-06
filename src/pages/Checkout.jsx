@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 
 export default function Checkout() {
-  const { token, user, updateUser } = useAuth();
+  const { token, user, updateUser, logout } = useAuth();
   const { cartItems, clearCart } = useCart();
   const navigate = useNavigate();
 
@@ -84,6 +84,11 @@ export default function Checkout() {
       try { localStorage.removeItem('cart'); } catch {}
       setCreatedOrder(resp.order || null);
     } catch (e) {
+      if (e?.isAuthError) {
+        logout?.();
+        navigate('/login?redirect=/checkout', { replace: true });
+        return;
+      }
       setErr(e?.message || 'No se pudo crear el pedido');
     } finally {
       setLoading(false);
@@ -99,6 +104,11 @@ export default function Checkout() {
       setCreatedOrder(resp.order || createdOrder);
       navigate('/', { replace: true });
     } catch (e) {
+      if (e?.isAuthError) {
+        logout?.();
+        navigate('/login?redirect=/checkout', { replace: true });
+        return;
+      }
       setErr(e?.message || 'No se pudo marcar como pagado (¿falta aprobación?)');
     } finally {
       setLoading(false);

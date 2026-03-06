@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Alert, Spinner, Button, Tabs, Tab, Form, Row, Col, Badge, Pagination, Modal } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
@@ -49,8 +50,16 @@ const sizeGroupMatchesProduct = (product, label = '') => {
 };
 
 export default function Admin() {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
+
+  const handleAuthError = (error) => {
+    if (!error?.isAuthError) return false;
+    logout?.();
+    navigate('/login?redirect=/admin', { replace: true });
+    return true;
+  };
 
   // overview
   const [ovrLoading, setOvrLoading] = useState(true);
@@ -185,6 +194,7 @@ export default function Admin() {
       setOverview(data);
       setOvrErr('');
     } catch (e) {
+      if (handleAuthError(e)) return;
       setOvrErr(e?.message || 'Error al cargar el resumen');
     }
   }
@@ -196,6 +206,7 @@ export default function Admin() {
         const data = await api.admin.overview(token);
         if (alive) setOverview(data);
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setOvrErr(e?.message || 'Error al cargar el resumen');
       } finally {
         if (alive) setOvrLoading(false);
@@ -206,6 +217,7 @@ export default function Admin() {
         const items = Array.isArray(data) ? data : (data?.items || []);
         if (alive) setUsers(items);
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setUErr(e?.message || 'Error al cargar usuarios');
       } finally {
         if (alive) setULoading(false);
@@ -216,6 +228,7 @@ export default function Admin() {
         const items = Array.isArray(data) ? data : (data?.items || data?.orders || []);
         if (alive) setOrders(items);
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setOErr(e?.message || 'Error al cargar pedidos');
       } finally {
         if (alive) setOLoading(false);
@@ -225,6 +238,7 @@ export default function Admin() {
         const items = await fetchAllProducts({ q: productQ || undefined });
         if (alive) setProducts(items);
       } catch (e) {
+        if (handleAuthError(e)) return;
         if (alive) setPErr(e?.message || 'Error al cargar productos');
       } finally {
         if (alive) setPLoading(false);
@@ -254,6 +268,7 @@ export default function Admin() {
       setUsers(prev => prev.filter(u => (u._id || u.id) !== id));
       setOrders(prev => prev.filter(o => String(o.user) !== String(id)));
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo eliminar.');
     }
   }
@@ -265,6 +280,7 @@ export default function Admin() {
       setUsers(prev => [created, ...prev]);
       setNewUser({ name: '', email: '', password: '' });
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo crear el usuario.');
     }
   }
@@ -275,6 +291,7 @@ export default function Admin() {
       setOrders(prev => prev.map(o => (o._id === order._id ? updated : o)));
       await refreshOverview();
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo actualizar el estado.');
     }
   }
@@ -295,6 +312,10 @@ export default function Admin() {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (e) {
+      if (e?.message === 'Error 401' || e?.message === 'Error 403') {
+        handleAuthError({ isAuthError: true });
+        return;
+      }
       window.alert(e?.message || 'No se pudo descargar el PDF.');
     }
   };
@@ -364,6 +385,7 @@ export default function Admin() {
       await refreshOverview();
       closeEditOrder();
     } catch (e) {
+      if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo actualizar el pedido.');
     }
   };

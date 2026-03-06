@@ -1,17 +1,18 @@
 // src/lib/api.js
 // Cliente API único + shim apiFetch
 
-// Lee variable para Vite o CRA, con fallback correcto a 5000 en dev.
+// Lee variable para Vite o CRA. En produccion, si no hay env, usa mismo origen.
 const RAW_ENV =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
   ((typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || '') ||
   '';
 
 const NODE_ENV = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) || '';
+const BROWSER_ORIGIN = (typeof window !== 'undefined' && window.location && window.location.origin) || '';
 
 const RAW_BASE =
   (RAW_ENV || (NODE_ENV === 'production'
-    ? 'https://final-ecommerce-b.onrender.com'
+    ? BROWSER_ORIGIN
     : 'http://localhost:8000')).trim(); // backend local va en 8000
 
 function normalizeBase(url) {
@@ -42,10 +43,11 @@ async function http(path, { method = 'GET', body, token, headers: extra = {} } =
     : await res.text().catch(() => '');
 
   if (!res.ok) {
-    const msg = (payload && (payload.error || payload.message)) || `${res.status} ${res.statusText}`;
+    const msg = (payload && (payload.error || payload.message || payload.detail)) || `${res.status} ${res.statusText}`;
     const err = new Error(msg);
     err.status = res.status;
     err.payload = payload;
+    err.isAuthError = res.status === 401 || res.status === 403;
     throw err;
   }
   return payload;

@@ -12,6 +12,15 @@ const TABS_BASE = [
   { key: 'cuenta', label: 'Mi cuenta' },
 ];
 
+const normalizeAdminImageUrls = (raw) => {
+  if (!raw) return [];
+  const text = String(raw);
+  return text
+    .split(/\r?\n|,|;|\|/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+};
+
 function TabButton({ active, onClick, children }) {
   return (
     <button
@@ -86,6 +95,19 @@ export default function Panel() {
   const [productos, setProductos] = useState([]);
   const [prodErr, setProdErr] = useState('');
   const [prodSearch, setProdSearch] = useState('');
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [prodSaving, setProdSaving] = useState(false);
+  const [prodSaveErr, setProdSaveErr] = useState('');
+  const [prodForm, setProdForm] = useState({
+    name: '',
+    price: '',
+    stock: '',
+    active: true,
+    description: '',
+    category: '',
+    imagesText: '',
+    imageFiles: [],
+  });
 
   useEffect(() => {
     if (!canManageProducts || tab !== 'productos') return;
@@ -117,7 +139,7 @@ export default function Panel() {
   const [offerErr, setOfferErr] = useState('');
 
   useEffect(() => {
-    if (!canManageProducts || tab !== 'categorias') return;
+    if (!canManageProducts || (tab !== 'categorias' && tab !== 'productos')) return;
     let alive = true;
     async function load() {
       setCatErr(''); setCatLoading(true);
@@ -153,6 +175,80 @@ export default function Panel() {
     return () => { alive = false; };
   }, [tab, token, canManageProducts]);
 
+  const startEditProduct = (p) => {
+    const id = p.id || p._id;
+    const images = Array.isArray(p.images) ? p.images : [];
+    const first = p.imageUrl || p.image_url || '';
+    const merged = [first, ...images].filter(Boolean);
+    setEditingProductId(id);
+    setProdSaveErr('');
+    setProdForm({
+      name: p.name || p.nombre || '',
+      price: String(p.price ?? p.precio ?? ''),
+      stock: String(p.stock ?? 0),
+      active: (p.active ?? p.activo ?? true) !== false,
+      description: p.description || p.descripcion || '',
+      category: String(p.category?.id || p.categoria?.id || p.categoria_id || ''),
+      imagesText: merged.join('\n'),
+      imageFiles: [],
+    });
+  };
+
+  const cancelEditProduct = () => {
+    setEditingProductId(null);
+    setProdSaveErr('');
+    setProdForm({
+      name: '',
+      price: '',
+      stock: '',
+      active: true,
+      description: '',
+      category: '',
+      imagesText: '',
+      imageFiles: [],
+    });
+  };
+
+  const saveProductFromPanel = async () => {
+    if (!editingProductId) return;
+    setProdSaving(true);
+    setProdSaveErr('');
+    try {
+      let uploadedUrls = [];
+      for (const file of prodForm.imageFiles || []) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const up = await api.admin.uploadImage(token, fd);
+        const url = up?.url || up?.path || '';
+        if (url) uploadedUrls.push(url);
+      }
+      const images = [
+        ...normalizeAdminImageUrls(prodForm.imagesText),
+        ...uploadedUrls,
+      ];
+      const uniqueImages = [...new Set(images)];
+
+      const payload = {
+        name: prodForm.name,
+        price: prodForm.price,
+        stock: Number(prodForm.stock || 0),
+        active: !!prodForm.active,
+        description: prodForm.description,
+        category: prodForm.category || null,
+        images: uniqueImages,
+      };
+      const updated = await api.admin.updateProduct(token, editingProductId, payload);
+      setProductos((prev) => prev.map((p) => (
+        String(p.id || p._id) === String(editingProductId) ? updated : p
+      )));
+      cancelEditProduct();
+    } catch (e) {
+      setProdSaveErr(e?.message || 'No se pudo guardar el producto');
+    } finally {
+      setProdSaving(false);
+    }
+  };
+
   const renderDashboard = () => (
     <div className="d-flex flex-column gap-3">
       <div className="d-flex align-items-center justify-content-between">
@@ -187,7 +283,7 @@ export default function Panel() {
       <div className="d-flex align-items-center justify-content-between">
         <div>
           <h4 className="mb-0">Productos</h4>
-          <small className="text-muted">Gestion rapida (lectura) y acceso a Django para edicion.</small>
+          <small className="text-muted">Gestion rapida con edicion y galeria de imagenes.</small>
         </div>
         <div className="d-flex gap-2">
           <Button size="sm" variant="primary" href="http://localhost:8000/admin/products/product/" target="_blank" rel="noreferrer">
@@ -223,6 +319,8 @@ export default function Panel() {
                 <th>Categoria</th>
                 <th>Precio</th>
                 <th>Stock</th>
+                <th>Imagenes</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -230,17 +328,106 @@ export default function Panel() {
                 <tr key={p.id || p.slug || p.name}>
                   <td>{p.name || p.nombre}</td>
                   <td>{p.category?.name || p.categoria || '-'}</td>
-                  <td>{p.price != null ? `$ ${p.price}` : '—'}</td>
+                  <td>{p.price != null ? `$ ${p.price}` : '-'}</td>
                   <td>{p.stock ?? '-'}</td>
+                  <td>{Array.isArray(p.images) ? p.images.length : (p.imageUrl || p.image_url ? 1 : 0)}</td>
+                  <td className="text-end">
+                    <Button size="sm" variant="outline-primary" onClick={() => startEditProduct(p)}>
+                      Editar
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {productos.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="text-center text-muted">Sin productos</td>
+                  <td colSpan={6} className="text-center text-muted">Sin productos</td>
                 </tr>
               )}
             </tbody>
           </Table>
+        </div>
+      )}
+
+      {editingProductId && (
+        <div className="border rounded p-3 bg-light">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <h6 className="mb-0">Editar producto</h6>
+            <Button size="sm" variant="outline-secondary" onClick={cancelEditProduct}>Cancelar</Button>
+          </div>
+          {prodSaveErr && <Alert variant="danger" className="py-2">{prodSaveErr}</Alert>}
+          <Row className="g-2">
+            <Col md={6}>
+              <Form.Label>Nombre</Form.Label>
+              <Form.Control value={prodForm.name} onChange={(e) => setProdForm((f) => ({ ...f, name: e.target.value }))} />
+            </Col>
+            <Col md={3}>
+              <Form.Label>Precio</Form.Label>
+              <Form.Control type="number" step="0.01" value={prodForm.price} onChange={(e) => setProdForm((f) => ({ ...f, price: e.target.value }))} />
+            </Col>
+            <Col md={3}>
+              <Form.Label>Stock</Form.Label>
+              <Form.Control type="number" min="0" value={prodForm.stock} onChange={(e) => setProdForm((f) => ({ ...f, stock: e.target.value }))} />
+            </Col>
+            <Col md={6}>
+              <Form.Label>Categoria</Form.Label>
+              <Form.Select value={prodForm.category} onChange={(e) => setProdForm((f) => ({ ...f, category: e.target.value }))}>
+                <option value="">Sin categoria</option>
+                {categorias.map((c) => (
+                  <option key={String(c.id || c._id)} value={String(c.id || c._id)}>
+                    {c.nombre || c.name || c.label}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+            <Col md={6} className="d-flex align-items-end">
+              <Form.Check
+                type="switch"
+                id="prod-active"
+                label="Activo"
+                checked={!!prodForm.active}
+                onChange={(e) => setProdForm((f) => ({ ...f, active: e.target.checked }))}
+              />
+            </Col>
+            <Col md={12}>
+              <Form.Label>Descripcion</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={prodForm.description}
+                onChange={(e) => setProdForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </Col>
+            <Col md={12}>
+              <Form.Label>URLs de imagen (una por linea)</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={prodForm.imagesText}
+                onChange={(e) => setProdForm((f) => ({ ...f, imagesText: e.target.value }))}
+                placeholder="https://.../img1.jpg&#10;https://.../img2.jpg"
+              />
+            </Col>
+            <Col md={12}>
+              <Form.Label>Subir imagenes (multiples)</Form.Label>
+              <Form.Control
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setProdForm((f) => ({ ...f, imageFiles: files }));
+                }}
+              />
+              {!!prodForm.imageFiles.length && (
+                <div className="small text-muted mt-1">{prodForm.imageFiles.length} archivo(s) listos para subir</div>
+              )}
+            </Col>
+          </Row>
+          <div className="d-flex justify-content-end mt-3">
+            <Button size="sm" onClick={saveProductFromPanel} disabled={prodSaving}>
+              {prodSaving ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </div>
         </div>
       )}
     </div>
@@ -376,3 +563,4 @@ export default function Panel() {
     </Container>
   );
 }
+

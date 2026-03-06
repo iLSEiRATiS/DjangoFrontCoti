@@ -1,0 +1,290 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Badge, Button, Col, Container, Form, InputGroup, Modal, Row, Spinner } from 'react-bootstrap';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import api, { API_BASE } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+
+const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+const normalizeImageUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('/')) return `${API_BASE}${raw}`;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return '';
+};
+
+const norm = (s = '') =>
+  s
+    .toString()
+    .trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const getAttributeOptions = (attrName, values, productName) => {
+  const list = Array.isArray(values) ? values : (values ? [values] : []);
+  const cleaned = list.map((v) => String(v).trim()).filter(Boolean);
+  const normalizedName = norm(attrName || '');
+  const asksNumberInName = norm(productName || '').includes('elegir numero');
+  const placeholderLike = cleaned.length <= 1 && cleaned.some((v) => /elegir|numero|n[úu]mero/i.test(v));
+  if (normalizedName.includes('numero') && (asksNumberInName || placeholderLike || cleaned.length <= 1)) {
+    return Array.from({ length: 10 }, (_, i) => String(i));
+  }
+  return cleaned;
+};
+
+export default function ProductDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
+  const { addToCart } = useCart();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [product, setProduct] = useState(null);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [selectedAttrs, setSelectedAttrs] = useState({});
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      setLoading(true);
+      setError('');
+      try {
+        const p = await api.products.get(id);
+        if (!alive) return;
+        const rawImages = Array.isArray(p.images) ? p.images : [];
+        const normalizedImages = rawImages.map((x) => normalizeImageUrl(x)).filter(Boolean);
+        const fallbackImage = normalizeImageUrl(p.imageUrl || p.image_url || p.imagen || '');
+        const images = [...new Set([fallbackImage, ...normalizedImages].filter(Boolean))];
+        const mapped = {
+          id: p._id || p.id || p.slug,
+          name: p.name || p.nombre || 'Producto',
+          description: p.description || p.descripcion || '',
+          price: Number(p.price ?? p.precio ?? 0),
+          priceOriginal: Number(p.priceOriginal ?? p.precioOriginal ?? p.price ?? p.precio ?? 0),
+          discount: p.discount || p.descuento || null,
+          stock: Number(p.stock ?? 0),
+          attributes: p.attributes || p.atributos || {},
+          categoryName: p.category?.name || p.category?.nombre || '',
+          categorySlug: p.category?.slug || '',
+          images,
+        };
+        const initialAttrs = {};
+        Object.entries(mapped.attributes).forEach(([k, v]) => {
+          const opts = getAttributeOptions(k, v, mapped.name);
+          if (opts.length) initialAttrs[k] = String(opts[0]);
+        });
+        setSelectedAttrs(initialAttrs);
+        setProduct(mapped);
+        setSelectedImage(images[0] || '');
+        setSelectedImageIndex(0);
+      } catch (e) {
+        if (alive) setError(e?.message || 'No se pudo cargar el producto');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    if (id) load();
+    return () => { alive = false; };
+  }, [id]);
+
+  const hasDiscount = useMemo(() => !!(product?.discount?.percent && product.priceOriginal > product.price), [product]);
+
+  const selectImageByIndex = (idx) => {
+    if (!product?.images?.length) return;
+    const safe = ((idx % product.images.length) + product.images.length) % product.images.length;
+    setSelectedImageIndex(safe);
+    setSelectedImage(product.images[safe] || '');
+  };
+
+  const openZoom = () => {
+    if (!selectedImage) return;
+    setZoomOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <Container className="py-4 text-center">
+        <Spinner animation="border" />
+      </Container>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <Container className="py-4">
+        <Alert variant="danger">{error || 'Producto no encontrado'}</Alert>
+        <Button variant="outline-secondary" onClick={() => navigate('/productos')}>Volver a productos</Button>
+      </Container>
+    );
+  }
+
+  return (
+    <Container className="py-3">
+      <div className="detail-breadcrumb mb-2">
+        <Link to="/">Inicio</Link>
+        <span>/</span>
+        <Link to="/productos">Productos</Link>
+        {!!product.categoryName && (
+          <>
+            <span>/</span>
+            <Link to={product.categorySlug ? `/productos?cat=${encodeURIComponent(product.categorySlug)}` : '/productos'}>
+              {product.categoryName}
+            </Link>
+          </>
+        )}
+        <span>/</span>
+        <span className="text-muted">{product.name}</span>
+      </div>
+
+      <div className="product-detail-shell">
+        <Row className="g-3">
+          <Col lg={7}>
+            <div className="detail-gallery">
+              <div className="detail-thumbs">
+                {product.images.map((img, idx) => (
+                  <button
+                    key={`thumb-${idx}`}
+                    type="button"
+                    className={`detail-thumb-btn ${selectedImage === img ? 'is-active' : ''}`}
+                    onClick={() => selectImageByIndex(idx)}
+                  >
+                    <img src={img} alt={`${product.name} ${idx + 1}`} />
+                  </button>
+                ))}
+              </div>
+              <div className="detail-main-image">
+                {selectedImage ? (
+                  <>
+                    <button
+                      type="button"
+                      className="detail-main-nav detail-main-prev"
+                      onClick={() => selectImageByIndex(selectedImageIndex - 1)}
+                      aria-label="Imagen anterior"
+                    >
+                      ‹
+                    </button>
+                    <img src={selectedImage} alt={product.name} />
+                    <button
+                      type="button"
+                      className="detail-main-nav detail-main-next"
+                      onClick={() => selectImageByIndex(selectedImageIndex + 1)}
+                      aria-label="Imagen siguiente"
+                    >
+                      ›
+                    </button>
+                    <button
+                      type="button"
+                      className="detail-zoom-btn"
+                      aria-label="Ampliar imagen"
+                      onClick={openZoom}
+                    >
+                      ⤢
+                    </button>
+                  </>
+                ) : (
+                  <div className="detail-empty-image">Sin imagen</div>
+                )}
+              </div>
+            </div>
+          </Col>
+          <Col lg={5}>
+            <div className="detail-info">
+              <h2 className="detail-title">{product.name}</h2>
+              {hasDiscount ? (
+                <div className="mb-3">
+                  <div className="text-muted text-decoration-line-through small">
+                    {money.format(product.priceOriginal)}
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="detail-price">{money.format(product.price)}</div>
+                    <Badge bg="success">-{product.discount.percent}%</Badge>
+                  </div>
+                </div>
+              ) : (
+                <div className="detail-price mb-3">{money.format(product.price)}</div>
+              )}
+
+              {Object.keys(product.attributes || {}).length > 0 && (
+                <div className="mb-3">
+                  {Object.entries(product.attributes).map(([attrName, values]) => {
+                    const options = getAttributeOptions(attrName, values, product.name);
+                    if (!options.length) return null;
+                    return (
+                      <Form.Group className="mb-2" key={attrName}>
+                        <Form.Label className="small text-muted">{attrName}</Form.Label>
+                        <Form.Select
+                          value={selectedAttrs[attrName] || options[0]}
+                          onChange={(e) => setSelectedAttrs((prev) => ({ ...prev, [attrName]: e.target.value }))}
+                        >
+                          {options.map((opt) => <option key={`${attrName}-${opt}`} value={opt}>{opt}</option>)}
+                        </Form.Select>
+                      </Form.Group>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mb-3">
+                <Form.Label className="small text-muted">Cantidad</Form.Label>
+                <InputGroup style={{ maxWidth: 180 }}>
+                  <Form.Control
+                    type="number"
+                    min={1}
+                    value={qty}
+                    onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                </InputGroup>
+              </div>
+
+              {!isLoggedIn ? (
+                <Alert variant="warning" className="small mb-0">
+                  Inicia sesion para ver precios y comprar.
+                </Alert>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={() => addToCart(
+                    {
+                      id: product.id,
+                      nombre: product.name,
+                      precio: product.price,
+                      precioOriginal: product.priceOriginal,
+                      imagen: product.images[0] || '',
+                    },
+                    qty,
+                    selectedAttrs
+                  )}
+                >
+                  Agregar al carrito
+                </Button>
+              )}
+
+              {!!product.description && (
+                <div className="mt-3 small text-muted">
+                  {product.description}
+                </div>
+              )}
+            </div>
+          </Col>
+        </Row>
+      </div>
+
+      <Modal show={zoomOpen} onHide={() => setZoomOpen(false)} centered size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>{product.name}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-0">
+          <div className="detail-zoom-wrap">
+            {selectedImage ? <img src={selectedImage} alt={product.name} /> : null}
+          </div>
+        </Modal.Body>
+      </Modal>
+    </Container>
+  );
+}
