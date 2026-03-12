@@ -65,7 +65,9 @@ export const api = {
   auth: {
     register: (data) => http('/api/auth/register', { method: 'POST', body: data }),
     login:    (data) => http('/api/auth/login',    { method: 'POST', body: data }),
-    me:       (token) => http('/api/auth/me', { token })
+    me:       (token) => http('/api/auth/me', { token }),
+    forgotPassword: (data) => http('/api/auth/forgot-password', { method: 'POST', body: data }),
+    resetPassword:  (data) => http('/api/auth/reset-password', { method: 'POST', body: data })
   },
   products: {
     list: (params) => http(`/api/products${qs(params)}`),
@@ -83,7 +85,22 @@ export const api = {
     create: (token, data) => http('/api/orders', { method: 'POST', token, body: data }),
     mine:   (token)       => http('/api/orders/mine', { token }),
     get:    (token, id)   => http(`/api/orders/${encodeURIComponent(id)}`, { token }),
-    pay:    (token, id)   => http(`/api/orders/${encodeURIComponent(id)}/pay`, { method: 'PATCH', token })
+    pay:    (token, id)   => http(`/api/orders/${encodeURIComponent(id)}/pay`, { method: 'PATCH', token }),
+    downloadPdf: async (token, id) => {
+      const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(id)}/pdf`, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'omit'
+      });
+      if (!res.ok) {
+        const msg = `${res.status} ${res.statusText}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.isAuthError = res.status === 401 || res.status === 403;
+        throw err;
+      }
+      return res.blob();
+    }
   },
   admin: {
     listUsers:     (token, params)      => http(`/api/admin/users${qs(params)}`, { token }),

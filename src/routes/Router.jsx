@@ -9,6 +9,8 @@ const Productos = lazy(() => import('../pages/Productos'));
 const ProductDetail = lazy(() => import('../pages/ProductDetail'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
+const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 const Carrito = lazy(() => import('../pages/Carrito'));
 const Account = lazy(() => import('../pages/Account'));
 const Admin = lazy(() => import('../pages/Admin'));
@@ -33,6 +35,8 @@ const AppRouter = () => (
           <Route path="/productos/:id" element={<ProductDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/carrito" element={<Carrito />} />
 
           {/* Usuario logueado */}

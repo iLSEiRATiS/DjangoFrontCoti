@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { API_BASE } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import Seo from '../components/Seo';
+import { normalizeText, toAbsoluteUrl } from '../lib/seo';
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
@@ -94,6 +96,35 @@ export default function ProductDetail() {
   }, [id]);
 
   const hasDiscount = useMemo(() => !!(product?.discount?.percent && product.priceOriginal > product.price), [product]);
+  const seoTitle = product ? `${product.name} - mayorista` : 'Detalle de producto';
+  const seoDescription = normalizeText(
+    product?.description || `Compra ${product?.name || 'producto'} en CotiStore mayorista.`
+  );
+  const seoImage = product?.images?.[0] || '';
+  const seoPath = `/productos/${encodeURIComponent(id || '')}`;
+  const seoSchema = useMemo(() => {
+    if (!product) return null;
+    const stockState = Number(product.stock || 0) > 0 ? 'InStock' : 'OutOfStock';
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      description: seoDescription,
+      image: (product.images || []).map((img) => toAbsoluteUrl(img)),
+      sku: String(product.id || id || ''),
+      brand: {
+        '@type': 'Brand',
+        name: 'CotiStore',
+      },
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'ARS',
+        price: Number(product.price || 0),
+        availability: `https://schema.org/${stockState}`,
+        url: toAbsoluteUrl(seoPath),
+      },
+    };
+  }, [id, product, seoDescription, seoPath]);
 
   const selectImageByIndex = (idx) => {
     if (!product?.images?.length) return;
@@ -109,23 +140,38 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <Container className="py-4 text-center">
-        <Spinner animation="border" />
-      </Container>
+      <>
+        <Seo title="Cargando producto" description="Cargando detalle de producto." path={seoPath} noindex />
+        <Container className="py-4 text-center">
+          <Spinner animation="border" />
+        </Container>
+      </>
     );
   }
 
   if (error || !product) {
     return (
-      <Container className="py-4">
-        <Alert variant="danger">{error || 'Producto no encontrado'}</Alert>
-        <Button variant="outline-secondary" onClick={() => navigate('/productos')}>Volver a productos</Button>
-      </Container>
+      <>
+        <Seo title="Producto no encontrado" description="El producto solicitado no existe." path={seoPath} noindex />
+        <Container className="py-4">
+          <Alert variant="danger">{error || 'Producto no encontrado'}</Alert>
+          <Button variant="outline-secondary" onClick={() => navigate('/productos')}>Volver a productos</Button>
+        </Container>
+      </>
     );
   }
 
   return (
-    <Container className="py-3">
+    <>
+      <Seo
+        title={seoTitle}
+        description={seoDescription}
+        path={seoPath}
+        image={seoImage}
+        type="product"
+        jsonLd={seoSchema}
+      />
+      <Container className="py-3">
       <div className="detail-breadcrumb mb-2">
         <Link to="/">Inicio</Link>
         <span>/</span>
@@ -285,6 +331,7 @@ export default function ProductDetail() {
           </div>
         </Modal.Body>
       </Modal>
-    </Container>
+      </Container>
+    </>
   );
 }

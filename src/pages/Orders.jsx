@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Table, Alert, Spinner } from 'react-bootstrap';
+import { Card, Table, Alert, Spinner, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
@@ -19,6 +19,7 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [rows, setRows] = useState([]);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const handleAuthError = (error) => {
     if (!error?.isAuthError) return false;
@@ -58,6 +59,28 @@ export default function Orders() {
     return () => { alive = false; };
   }, [token]);
 
+  const downloadOrderPdf = async (order) => {
+    const oid = order?.id || order?._id;
+    if (!oid) return;
+    try {
+      setDownloadingId(String(oid));
+      const blob = await api.orders.downloadPdf(token, oid);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pedido-${oid}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      if (handleAuthError(e)) return;
+      window.alert(e?.message || 'No se pudo descargar el PDF');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -77,24 +100,36 @@ export default function Orders() {
                   <th>Monto</th>
                   <th>Estado</th>
                   <th>Fecha</th>
+                  <th>Comprobante</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(o => {
                   const raw = (o.status || '').toLowerCase();
                   const label = STATUS_LABELS[raw] || o.statusLabel || translateStatus(o.status);
+                  const oid = o.id || o._id;
                   return (
-                    <tr key={o._id}>
-                      <td>{o._id}</td>
+                    <tr key={oid}>
+                      <td>{oid}</td>
                       <td>{o.totals?.items}</td>
                       <td>${o.totals?.amount?.toFixed ? o.totals.amount.toFixed(2) : o.totals?.amount}</td>
-                    <td>{label || (o.status || '').toLowerCase()}</td>
+                      <td>{label || (o.status || '').toLowerCase()}</td>
                       <td>{new Date(o.createdAt).toLocaleString()}</td>
+                      <td>
+                        <Button
+                          size="sm"
+                          variant="outline-secondary"
+                          disabled={downloadingId === String(oid)}
+                          onClick={() => downloadOrderPdf(o)}
+                        >
+                          {downloadingId === String(oid) ? 'Descargando...' : 'Descargar PDF'}
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}
                 {rows.length === 0 && (
-                  <tr><td colSpan={5} className="text-center py-3">Sin pedidos.</td></tr>
+                  <tr><td colSpan={6} className="text-center py-3">Sin pedidos.</td></tr>
                 )}
               </tbody>
             </Table>

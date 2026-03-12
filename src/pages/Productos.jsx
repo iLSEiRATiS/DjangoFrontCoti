@@ -7,6 +7,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import productosData from '../data/productos.json';
 import api, { API_BASE } from '../lib/api';
+import Seo from '../components/Seo';
+import { normalizeText, toAbsoluteUrl } from '../lib/seo';
 
 const slugify = (str = '') =>
   str
@@ -157,6 +159,232 @@ function dedupeSpecificGloboX1(products = []) {
     }
     return false;
   });
+}
+
+function mergeSpecificUnitAndDozenProducts(products = []) {
+  if (!Array.isArray(products) || !products.length) return products;
+  const stripPresentationFromName = (name = '') =>
+    String(name || '')
+      // x50, x 50, x50u, 50 unidades
+      .replace(/\bx\s*\d+\s*(u|ud|uds|unidades?)?\b/gi, '')
+      .replace(/\b\d+\s*(u|ud|uds|unidades?)\b/gi, '')
+      // x unidad / x unidades
+      .replace(/\bx\s*(unidad|unidades|u|ud|uds)\b/gi, '')
+      // docena / unidad
+      .replace(/\b(docena|unidad|unidades)\b/gi, '')
+      // limpia "x" suelta residual al final
+      .replace(/\bx\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const normalizeNameForGroup = (name = '') => stripPresentationFromName(name);
+
+  const labelFromQty = (qty) => {
+    const n = Number(qty);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n === 1 ? '1 unidad' : `${n} unidades`;
+  };
+
+  const parsePresentation = (text = '') => {
+    const source = String(text || '').toLowerCase();
+    if (!source) return null;
+    if (/\bdocena\b/.test(source)) return '12 unidades';
+    if (/\bx\s*unidad\b|\b1\s*unidad\b|\bunidad\b/.test(source)) return '1 unidad';
+    const match = source.match(/\bx\s*(\d+)\s*(u|uds|unidades?)?\b|\b(\d+)\s*unidades?\b/);
+    const rawQty = match ? (match[1] || match[3]) : '';
+    const qty = Number(rawQty);
+    return labelFromQty(qty);
+  };
+
+  const getPresentationLabel = (item) => {
+    const attrs = item?.atributos || {};
+    const key = Object.keys(attrs).find((k) => {
+      const nk = norm(k);
+      return nk.includes('cantidad') || nk.includes('presentacion');
+    });
+    const rawAttr = key ? (Array.isArray(attrs[key]) ? attrs[key][0] : attrs[key]) : '';
+    return parsePresentation(rawAttr) || parsePresentation(item?.nombre || '');
+  };
+
+  const groups = new Map();
+  const singles = [];
+  for (const item of products) {
+    const baseName = normalizeNameForGroup(item?.nombre || '');
+    const groupKey = norm(baseName);
+    if (!groupKey) {
+      singles.push(item);
+      continue;
+    }
+    if (!groups.has(groupKey)) groups.set(groupKey, []);
+    groups.get(groupKey).push(item);
+  }
+
+  const output = [...singles];
+  groups.forEach((items, groupKey) => {
+    if (items.length < 2) {
+      output.push(...items);
+      return;
+    }
+
+    const rows = items.map((item) => ({
+      item,
+      presentation: getPresentationLabel(item),
+      baseName: stripPresentationFromName(item?.nombre || ''),
+    }));
+    const validRows = rows.filter((r) => !!r.presentation);
+    if (validRows.length < 2) {
+      output.push(...items);
+      return;
+    }
+
+    const sortedRows = [...validRows].sort((a, b) => {
+      const qa = Number((a.presentation || '').split(' ')[0]) || 9999;
+      const qb = Number((b.presentation || '').split(' ')[0]) || 9999;
+      return qa - qb;
+    });
+    const uniqueLabels = [...new Set(sortedRows.map((r) => r.presentation))];
+    if (uniqueLabels.length < 2) {
+      output.push(...items);
+      return;
+    }
+    const primary = sortedRows[0]?.item || items[0];
+    const primaryBaseName = sortedRows[0]?.baseName || stripPresentationFromName(primary?.nombre || '');
+
+    const images = [...new Set(items.flatMap((x) => x?.imagenes || []).filter(Boolean))];
+    const priceMap = {};
+    const idMap = {};
+    const stockMap = {};
+
+    for (const row of sortedRows) {
+      priceMap[row.presentation] = Number(row.item?.precio ?? 0);
+      idMap[row.presentation] = row.item?.id || row.item?._id || null;
+      stockMap[row.presentation] = Number(row.item?.stock ?? 0);
+    }
+
+    output.push({
+      ...primary,
+      id: `merged-presentation-${primary?.id || primary?._id || groupKey}`,
+      sourceProductId: primary?.id || primary?._id || null,
+      nombre: primaryBaseName || primary?.nombre || 'Producto',
+      imagen: images[0] || primary?.imagen || '',
+      imagenes: images.length ? images : [primary?.imagen].filter(Boolean),
+      precio: Number(priceMap[uniqueLabels[0]] ?? primary?.precio ?? 0),
+      precioOriginal: Number(priceMap[uniqueLabels[0]] ?? primary?.precioOriginal ?? primary?.precio ?? 0),
+      descuento: null,
+      atributos: {
+        ...Object.fromEntries(
+          Object.entries(primary?.atributos || {}).filter(([k]) => {
+            const nk = norm(k);
+            return !(nk.includes('cantidad') || nk.includes('presentacion'));
+          })
+        ),
+        Cantidad: uniqueLabels,
+      },
+      precio_por_presentacion: priceMap,
+      product_id_por_presentacion: idMap,
+      stock_por_presentacion: stockMap,
+      stock: Number(stockMap[uniqueLabels[0]] ?? primary?.stock ?? 0),
+    });
+  });
+
+  return output;
+}
+
+function shouldHideUnitDozenVariant(product) {
+  return false;
+}
+
+function mergeAntifazVenecianoFamily(products = []) {
+  if (!Array.isArray(products) || !products.length) return products;
+
+  const familyBases = new Map([
+    [norm('Antifaz Veneciano'), 'Clasico'],
+    [norm('Antifaz Veneciano Modelo 2'), 'Modelo 2'],
+    [norm('Antifaz Veneciano Modelo 3'), 'Modelo 3'],
+  ]);
+
+  const detectQty = (item) => {
+    const byName = String(item?.nombre || '');
+    if (/\b(12\s*unidades?|x\s*12|docena)\b/i.test(byName)) return '12 unidades';
+    const attrs = item?.atributos || {};
+    const key = Object.keys(attrs).find((k) => norm(k).includes('cantidad') || norm(k).includes('presentacion'));
+    const raw = key ? (Array.isArray(attrs[key]) ? attrs[key][0] : attrs[key]) : '';
+    return /12|docena/i.test(String(raw || '')) ? '12 unidades' : '1 unidad';
+  };
+
+  const passthrough = [];
+  const candidates = [];
+
+  for (const p of products) {
+    const base = norm(String(p?.nombre || '').replace(/\b(12\s*unidades?|x\s*12|docena)\b/gi, '').trim());
+    const modelLabel = familyBases.get(base);
+    if (!modelLabel) {
+      passthrough.push(p);
+      continue;
+    }
+    candidates.push({ item: p, modelLabel, qtyLabel: detectQty(p) });
+  }
+
+  if (!candidates.length) return products;
+
+  const comboPrice = {};
+  const comboProduct = {};
+  const comboStock = {};
+  const models = ['Clasico', 'Modelo 2', 'Modelo 3'];
+  const qtys = ['1 unidad', '12 unidades'];
+
+  for (const c of candidates) {
+    const key = `${c.modelLabel}||${c.qtyLabel}`;
+    comboPrice[key] = Number(c.item?.precio ?? 0);
+    comboProduct[key] = c.item?.id || c.item?._id || null;
+    comboStock[key] = Number(c.item?.stock ?? 0);
+  }
+
+  // Si falta alguna combinacion, dejamos esos productos sin fusionar para no romper compra.
+  const hasAll = models.every((m) => qtys.every((q) => Object.prototype.hasOwnProperty.call(comboPrice, `${m}||${q}`)));
+  if (!hasAll) return products;
+
+  const ref = candidates.find((x) => x.modelLabel === 'Clasico' && x.qtyLabel === '1 unidad')?.item || candidates[0].item;
+  const images = [...new Set(candidates.flatMap((x) => x.item?.imagenes || []).filter(Boolean))];
+
+  const merged = {
+    ...ref,
+    id: 'merged-antifaz-veneciano-family',
+    sourceProductId: comboProduct['Clasico||1 unidad'] || ref.id || ref._id || null,
+    nombre: 'Antifaz Veneciano',
+    imagen: images[0] || ref.imagen || '',
+    imagenes: images.length ? images : [ref.imagen].filter(Boolean),
+    precio: Number(comboPrice['Clasico||1 unidad'] ?? ref.precio ?? 0),
+    precioOriginal: Number(comboPrice['Clasico||1 unidad'] ?? ref.precioOriginal ?? ref.precio ?? 0),
+    descuento: null,
+    atributos: {
+      ...Object.fromEntries(
+        Object.entries(ref.atributos || {}).filter(([k]) => {
+          const nk = norm(k);
+          return !nk.includes('cantidad') && !nk.includes('presentacion') && !nk.includes('modelo');
+        })
+      ),
+      Modelo: models,
+      Cantidad: qtys,
+    },
+    precio_por_combinacion: comboPrice,
+    product_id_por_combinacion: comboProduct,
+    stock_por_combinacion: comboStock,
+    stock: Number(comboStock['Clasico||1 unidad'] ?? ref.stock ?? 0),
+  };
+
+  return [...passthrough, merged];
+}
+
+function shouldHideAntifazVenecianoFamilyOriginal(product) {
+  const id = String(product?.id || '');
+  if (id === 'merged-antifaz-veneciano-family') return false;
+  const base = norm(String(product?.nombre || '').replace(/\b(12\s*unidades?|x\s*12|docena)\b/gi, '').trim());
+  return [
+    norm('Antifaz Veneciano'),
+    norm('Antifaz Veneciano Modelo 2'),
+    norm('Antifaz Veneciano Modelo 3'),
+  ].includes(base);
 }
 
 const SORTERS = {
@@ -314,6 +542,7 @@ function buildTreeFromApi(categories = []) {
 }
 
 const findBySlug = (nodes, slug) => {
+  if (!Array.isArray(nodes) || !slug) return null;
   for (const n of nodes) {
     if (n.slug === slug) return n;
     if (n.children) {
@@ -514,7 +743,8 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
   const setCategory = (cat) => {
     onChange((prev) => ({
       ...prev,
-      category: cat,
+      // Toggle: si se toca la categoria activa, se repliega todo.
+      category: prev.category === cat ? '' : cat,
       subcategory: '',
     }));
   };
@@ -523,7 +753,8 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
     onChange((prev) => ({
       ...prev,
       category: cat,
-      subcategory: sub,
+      // Toggle: si se vuelve a tocar la misma subcategoria, se repliega.
+      subcategory: prev.category === cat && prev.subcategory === sub ? '' : sub,
     }));
   };
 
@@ -744,6 +975,7 @@ export default function Productos() {
     phone: '',
     message: '',
   });
+  const [cardQtyByKey, setCardQtyByKey] = useState({});
   const [selectedAttrs, setSelectedAttrs] = useState({});
   const [draftCat, setDraftCat] = useState(cat);
   const [draftSubcat, setDraftSubcat] = useState(subcat);
@@ -943,10 +1175,19 @@ export default function Productos() {
             stock: Number(p.stock ?? 0),
           };
         });
-        const mergedMapped = fixSpecificGloboDuplicate(mergeSpecialColorProducts(mapped));
+        const mergedMapped = mergeSpecificUnitAndDozenProducts(
+          fixSpecificGloboDuplicate(mergeSpecialColorProducts(mapped))
+        );
         const cleanedMapped = dedupeSpecificGloboX1(mergedMapped);
         if (!alive || requestId !== remoteRequestRef.current) return;
-        setRemote(cleanedMapped.filter((p) => p.activo && !shouldHideKnownBadGloboVariant(p.nombre)));
+        setRemote(
+          cleanedMapped.filter(
+            (p) =>
+              p.activo &&
+              !shouldHideKnownBadGloboVariant(p.nombre) &&
+              !shouldHideUnitDozenVariant(p)
+          )
+        );
         setTotalRemote(Number(data?.total) || cleanedMapped.length || 0);
         setPagesRemote(
           Number(data?.pages) || Math.max(1, Math.ceil((Number(data?.total) || cleanedMapped.length || 0) / per))
@@ -977,7 +1218,10 @@ export default function Productos() {
   );
   const usingFallback = !!err;
   const baseListRaw = usingFallback ? localFiltered : remote;
-  const baseList = useMemo(() => dedupeSpecificGloboX1(baseListRaw), [baseListRaw]);
+  const baseList = useMemo(
+    () => mergeSpecificUnitAndDozenProducts(dedupeSpecificGloboX1(baseListRaw)).filter((p) => !shouldHideUnitDozenVariant(p)),
+    [baseListRaw]
+  );
   const appliedFilters = { q: searchDebounced, category: cat, subcategory: subcat };
   const draftFilters = { q: draftFilterQ, category: draftCat, subcategory: draftSubcat };
   const filteredByFacets = usingFallback
@@ -1227,6 +1471,32 @@ export default function Productos() {
     ? sortedByFacets.slice((safePage - 1) * per, safePage * per)
     : sortedByFacets;
   const endIdx = total === 0 ? 0 : ((safePage - 1) * per + paginated.length);
+  const seoTree = Array.isArray(categoryTree) ? categoryTree : [];
+  const seoCategoryNode = cat ? findBySlug(seoTree, cat) : null;
+  const seoSubcategoryNode = subcat ? findBySlug(seoTree, subcat) : null;
+  const seoCategoryLabel = seoSubcategoryNode?.label || seoCategoryNode?.label || '';
+  const seoTitle = seoCategoryLabel
+    ? `Catalogo mayorista ${seoCategoryLabel}`
+    : 'Catalogo mayorista de cotillon';
+  const seoDescription = normalizeText(
+    `${seoTitle}. ${total} productos disponibles${searchDebounced ? ` para "${searchDebounced}"` : ''}.`
+  );
+  const seoPath = `/productos${location.search || ''}`;
+  const seoSchema = useMemo(
+    () => ({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: seoTitle,
+      description: seoDescription,
+      url: toAbsoluteUrl(seoPath),
+      isPartOf: {
+        '@type': 'WebSite',
+        name: 'CotiStore',
+        url: toAbsoluteUrl('/'),
+      },
+    }),
+    [seoDescription, seoPath, seoTitle]
+  );
 
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
@@ -1371,6 +1641,13 @@ export default function Productos() {
 
   const getProductKey = (p) => String(p?.id || `${p?.categoria}-${p?.nombre}`);
 
+  const getCardQty = (p, max = 999) => {
+    const key = getProductKey(p);
+    const raw = Number(cardQtyByKey[key]);
+    const safe = Number.isFinite(raw) ? Math.trunc(raw) : 1;
+    return Math.max(1, Math.min(max, safe || 1));
+  };
+
   const getAttributeOptions = (attrName, values, product) => {
     const list = Array.isArray(values) ? values : (values ? [values] : []);
     const cleaned = list.map((v) => String(v).trim()).filter(Boolean);
@@ -1401,6 +1678,44 @@ export default function Productos() {
     return out;
   };
 
+  const getEffectivePrice = (product, attrs = {}) => {
+    const modelSel = attrs?.Modelo || attrs?.modelo;
+    const qtySel = attrs?.Cantidad || attrs?.cantidad || attrs?.Presentacion || attrs?.presentacion;
+    const comboMap = product?.precio_por_combinacion;
+    if (comboMap && typeof comboMap === 'object' && modelSel && qtySel) {
+      const comboKey = `${modelSel}||${qtySel}`;
+      const comboPrice = Number(comboMap[comboKey]);
+      if (Number.isFinite(comboPrice)) return comboPrice;
+    }
+    const map = product?.precio_por_presentacion;
+    if (!map || typeof map !== 'object') return Number(product?.precio ?? 0);
+    const selected = qtySel;
+    const bySelection = selected ? Number(map[selected]) : NaN;
+    if (Number.isFinite(bySelection)) return bySelection;
+    const first = Object.values(map).find((v) => Number.isFinite(Number(v)));
+    return Number.isFinite(Number(first)) ? Number(first) : Number(product?.precio ?? 0);
+  };
+
+  const resolveProductForCart = (product, attrs = {}) => {
+    const selectedModel = attrs?.Modelo || attrs?.modelo;
+    const selectedPresentation = attrs?.Cantidad || attrs?.cantidad || attrs?.Presentacion || attrs?.presentacion;
+    const price = getEffectivePrice(product, attrs);
+    const comboKey = selectedModel && selectedPresentation ? `${selectedModel}||${selectedPresentation}` : null;
+    const comboIds = product?.product_id_por_combinacion || {};
+    const comboStock = product?.stock_por_combinacion || {};
+    const mapIds = product?.product_id_por_presentacion || {};
+    const mapStock = product?.stock_por_presentacion || {};
+    const resolvedProductId = comboKey ? (comboIds[comboKey] ?? null) : (selectedPresentation ? mapIds[selectedPresentation] : null);
+    const resolvedStock = comboKey ? (comboStock[comboKey] ?? null) : (selectedPresentation ? mapStock[selectedPresentation] : null);
+    return {
+      ...product,
+      precio: Number(price),
+      precioOriginal: Number(price),
+      sourceProductId: resolvedProductId || product.sourceProductId || product.id || product._id || null,
+      maxStock: Number.isFinite(Number(resolvedStock)) ? Number(resolvedStock) : Number(product.stock ?? 0),
+    };
+  };
+
   const getVariantStock = (p, attrs) => {
     const stockMap = p?.atributos_stock;
     if (!stockMap || typeof stockMap !== 'object') return null;
@@ -1429,8 +1744,18 @@ export default function Productos() {
     setConsultOpen(false);
   };
 
+  const detailAttrs = detailProduct ? getSelectedAttributes(detailProduct) : {};
+  const detailPriceValue = detailProduct ? getEffectivePrice(detailProduct, detailAttrs) : 0;
+
   return (
-    <Container className="catalog-page py-4">
+    <>
+      <Seo
+        title={seoTitle}
+        description={seoDescription}
+        path={seoPath}
+        jsonLd={seoSchema}
+      />
+      <Container className="catalog-page py-4">
       <div className="catalog-toolbar">
         <div className="catalog-summary">
           <h2 className="catalog-title">Catálogo</h2>
@@ -1529,7 +1854,9 @@ export default function Productos() {
           <Row className="g-4">
             {paginated.map((p) => {
               const attrs = getSelectedAttributes(p);
+              const priceValue = getEffectivePrice(p, attrs);
               const qtyMax = 999;
+              const productKey = getProductKey(p);
 
               return (
               <Col key={p.id || `${p.categoria}-${p.nombre}`} xs={6} md={4} lg={3}>
@@ -1562,7 +1889,7 @@ export default function Productos() {
                     )}
                   </div>
                   <div className="p-3 d-flex flex-column flex-grow-1">
-                    <h6 className="mb-2" style={{ lineHeight: 1.2 }}>{p.nombre}</h6>
+                    <h6 className="product-card-title mb-2">{p.nombre}</h6>
                     {/* Categoria/subcategoria oculta en card para una vista mas limpia */}
                     {p.atributos && Object.keys(p.atributos).length > 0 && (
                       <div className="mb-2">
@@ -1598,10 +1925,10 @@ export default function Productos() {
                       </div>
                     )}
                     <>
-                      <div className="fw-bold mb-3">
+                      <div className="product-price mb-3">
                         {!isLoggedIn ? (
                           <span className="text-muted small">Inicia sesion para ver precios</span>
-                        ) : Number(p.precio ?? 0) <= 0 ? (
+                        ) : Number(priceValue ?? 0) <= 0 ? (
                           <Button
                             variant="outline-primary"
                             size="sm"
@@ -1618,47 +1945,46 @@ export default function Productos() {
                               {money.format(Number(p.precioOriginal ?? 0))}
                             </div>
                             <div className="d-flex align-items-center gap-2">
-                              <span>{money.format(Number(p.precio ?? 0))}</span>
+                              <span>{money.format(Number(priceValue ?? 0))}</span>
                               <Badge bg="success">-{p.descuento.percent}%</Badge>
                             </div>
                           </div>
                         ) : (
-                          money.format(Number(p.precio ?? 0))
+                          money.format(Number(priceValue ?? 0))
                         )}
                       </div>
 
                       <div className="mt-auto">
-                        <div className="small text-muted mb-1">Cantidad</div>
-                        <InputGroup className="product-add-row">
+                        <div className="small text-muted mb-1 product-qty-label">Cantidad</div>
+                        <div className="product-add-row">
                           <Form.Control
                             type="number"
                             min={1}
                             max={qtyMax}
-                            defaultValue={1}
+                            value={getCardQty(p, qtyMax)}
                             size="sm"
-                            disabled={!isLoggedIn || Number(p.precio ?? 0) <= 0}
+                            className="product-qty-input"
+                            disabled={!isLoggedIn || Number(priceValue ?? 0) <= 0}
                             onChange={(e) => {
                               const val = Math.max(1, Math.min(qtyMax, Number(e.target.value) || 1));
-                              e.target.value = val;
+                              setCardQtyByKey((prev) => ({ ...prev, [productKey]: val }));
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            style={{ maxWidth: 120 }}
                             aria-label="Cantidad"
                           />
                           <Button
                             variant="primary"
                             size="sm"
-                            disabled={!isLoggedIn || Number(p.precio ?? 0) <= 0}
+                            disabled={!isLoggedIn || Number(priceValue ?? 0) <= 0}
                             onClick={(e) => {
                               e.stopPropagation();
-                              const input = e.currentTarget.parentElement.querySelector('input[type=\"number\"]');
-                              const qty = input ? Number(input.value) || 1 : 1;
-                              addToCart(p, Math.max(1, Math.min(qtyMax, qty)), attrs);
+                              const qty = getCardQty(p, qtyMax);
+                              addToCart(resolveProductForCart(p, attrs), Math.max(1, Math.min(qtyMax, qty)), attrs);
                             }}
                           >
-                            {!isLoggedIn ? 'Inicia sesion' : (Number(p.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
+                            {!isLoggedIn ? 'Inicia sesion' : (Number(priceValue ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
                           </Button>
-                        </InputGroup>
+                        </div>
                       </div>
                     </>
                   </div>
@@ -1820,7 +2146,7 @@ export default function Productos() {
                   <div className="fw-bold mb-3">
                     {!isLoggedIn ? (
                       <span className="text-muted small">Inicia sesion para ver precios</span>
-                    ) : Number(detailProduct.precio ?? 0) <= 0 ? (
+                    ) : Number(detailPriceValue ?? 0) <= 0 ? (
                       <Button variant="outline-primary" size="sm" onClick={() => openConsult(detailProduct)}>
                         Consultar
                       </Button>
@@ -1830,12 +2156,12 @@ export default function Productos() {
                           {money.format(Number(detailProduct.precioOriginal ?? 0))}
                         </div>
                         <div className="d-flex align-items-center gap-2">
-                          <span>{money.format(Number(detailProduct.precio ?? 0))}</span>
+                          <span>{money.format(Number(detailPriceValue ?? 0))}</span>
                           <Badge bg="success">-{detailProduct.descuento.percent}%</Badge>
                         </div>
                       </div>
                     ) : (
-                      money.format(Number(detailProduct.precio ?? 0))
+                      money.format(Number(detailPriceValue ?? 0))
                     )}
                   </div>
 
@@ -1885,13 +2211,12 @@ export default function Productos() {
                   <Button
                     variant="primary"
                     className={isMobile ? 'w-100' : ''}
-                    disabled={!isLoggedIn || Number(detailProduct.precio ?? 0) <= 0}
+                    disabled={!isLoggedIn || Number(detailPriceValue ?? 0) <= 0}
                     onClick={() => {
-                      const attrs = getSelectedAttributes(detailProduct);
-                      addToCart(detailProduct, detailQty, attrs);
+                      addToCart(resolveProductForCart(detailProduct, detailAttrs), detailQty, detailAttrs);
                     }}
                   >
-                    {!isLoggedIn ? 'Inicia sesion' : (Number(detailProduct.precio ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
+                    {!isLoggedIn ? 'Inicia sesion' : (Number(detailPriceValue ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
                   </Button>
                 </div>
               </Col>
@@ -1966,7 +2291,8 @@ export default function Productos() {
         </Form>
       </Modal>
 
-    </Container>
+      </Container>
+    </>
   );
 }
 

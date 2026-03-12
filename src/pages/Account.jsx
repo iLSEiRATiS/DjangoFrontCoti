@@ -131,6 +131,7 @@ export default function Account() {
   const [orders, setOrders] = useState([]);
   const [oLoading, setOLoading] = useState(true);
   const [oErr, setOErr] = useState('');
+  const [downloadingOrderId, setDownloadingOrderId] = useState(null);
   const [bulkFile, setBulkFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importErr, setImportErr] = useState('');
@@ -142,6 +143,43 @@ export default function Account() {
     logout?.();
     navigate('/login?redirect=/account', { replace: true });
     return true;
+  };
+
+  const translateStatus = (raw) => {
+    const map = {
+      created: 'Creado',
+      approved: 'Aprobado',
+      pending_payment: 'Falta pago',
+      paid: 'Pagado',
+      shipped: 'Enviado',
+      delivered: 'Entregado',
+      cancelled: 'Cancelado',
+      draft: 'Borrador',
+    };
+    const s = String(raw || '').trim().toLowerCase();
+    return map[s] || raw || '-';
+  };
+
+  const downloadOrderPdf = async (order) => {
+    const oid = order?.id || order?._id;
+    if (!oid) return;
+    try {
+      setDownloadingOrderId(String(oid));
+      const blob = await api.orders.downloadPdf(token, oid);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pedido-${oid}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      if (handleAuthError(e)) return;
+      window.alert(e?.message || 'No se pudo descargar el PDF');
+    } finally {
+      setDownloadingOrderId(null);
+    }
   };
 
   useEffect(() => {
@@ -454,20 +492,31 @@ export default function Account() {
                           <th>Monto</th>
                           <th>Estado</th>
                           <th>Fecha</th>
+                          <th>Comprobante</th>
                         </tr>
                       </thead>
                       <tbody>
                         {orders.map(o => (
-                          <tr key={o._id}>
-                            <td>{o._id}</td>
+                          <tr key={o.id || o._id}>
+                            <td>{o.id || o._id}</td>
                             <td>{o.totals?.items}</td>
                             <td>${o.totals?.amount?.toFixed ? o.totals.amount.toFixed(2) : o.totals?.amount}</td>
-                            <td>{o.status}</td>
+                            <td>{o.status_label || translateStatus(o.status)}</td>
                             <td>{new Date(o.createdAt).toLocaleString()}</td>
+                            <td>
+                              <Button
+                                size="sm"
+                                variant="outline-secondary"
+                                disabled={downloadingOrderId === String(o.id || o._id)}
+                                onClick={() => downloadOrderPdf(o)}
+                              >
+                                {downloadingOrderId === String(o.id || o._id) ? 'Descargando...' : 'Descargar PDF'}
+                              </Button>
+                            </td>
                           </tr>
                         ))}
                         {orders.length === 0 && (
-                          <tr><td colSpan={5} className="text-center py-3">Sin pedidos.</td></tr>
+                          <tr><td colSpan={6} className="text-center py-3">Sin pedidos.</td></tr>
                         )}
                       </tbody>
                     </Table>

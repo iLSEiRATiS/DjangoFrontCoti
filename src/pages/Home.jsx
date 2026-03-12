@@ -5,35 +5,90 @@ import { Link, useNavigate } from 'react-router-dom';
 import velasImg from '../assets/velas-optimized.webp';
 import decoImg from '../assets/deco-optimized.webp';
 import luminososImg from '../assets/luminosos-optimized.webp';
-import api from '../lib/api';
+import api, { API_BASE } from '../lib/api';
+import Seo from '../components/Seo';
+import { toAbsoluteUrl } from '../lib/seo';
 
 /** Hero con imágenes locales */
 const heroImages = [velasImg, decoImg, luminososImg];
 
 /** Mosaico principal de categorías (enlaza a /productos con filtros) */
 const tiles = [
-  { key: 'tile-cotillon-velas', title: 'Cotillon / Velas', to: '/productos?cat=cotillon&subcat=velas', img: 'https://images.pexels.com/photos/3171837/pexels-photo-3171837.jpeg' },
-  { key: 'tile-globos-pinatas', title: 'Globos y Pinatas', to: '/productos?cat=globos-y-pinatas', img: 'https://images.pexels.com/photos/17811/pexels-photo.jpg' },
-  { key: 'tile-guirnaldas-led', title: 'Guirnaldas LED', to: '/productos?cat=decoracion-led', img: 'https://images.pexels.com/photos/112460/pexels-photo-112460.jpeg' },
-  { key: 'tile-disfraces', title: 'Disfraces', to: '/productos?cat=disfraces', img: 'https://images.pexels.com/photos/134469/pexels-photo-134469.jpeg' },
-  { key: 'tile-descartables', title: 'Descartables', to: '/productos?cat=descartables', img: 'https://images.pexels.com/photos/3952047/pexels-photo-3952047.jpeg' },
-  { key: 'tile-reposteria', title: 'Reposteria', to: '/productos?cat=reposteria', img: 'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg' },
+  { key: 'tile-cotillon-velas', title: 'Cotillon / Velas', to: '/productos?cat=cotillon&subcat=velas', img: '' },
+  { key: 'tile-globos-pinatas', title: 'Globos y Pinatas', to: '/productos?cat=globos-y-pinatas', img: '' },
+  { key: 'tile-guirnaldas-led', title: 'Guirnaldas LED', to: '/productos?cat=decoracion-led', img: '' },
+  { key: 'tile-disfraces', title: 'Disfraces', to: '/productos?cat=disfraces', img: '' },
+  { key: 'tile-descartables', title: 'Descartables', to: '/productos?cat=descartables', img: '' },
+  { key: 'tile-reposteria', title: 'Reposteria', to: '/productos?cat=reposteria', img: '' },
 ];
 
 const heroOverrideKeys = ['hero-1', 'hero-2', 'hero-3'];
+const TILE_POOL_CACHE_KEY = 'home_tile_image_pools_v1';
+const FEATURED_POOL_CACHE_KEY = 'home_featured_image_pools_v1';
 
 /** Tiras adicionales de colecciones destacadas */
 const featured = [
-  { key: 'featured-numeros-metalizados', title: 'Numeros metalizados', to: '/productos?cat=globos-y-pinatas&subcat=numero-metalizados', img: 'https://images.pexels.com/photos/796606/pexels-photo-796606.jpeg' },
-  { key: 'featured-set-de-globos', title: 'Set de globos', to: '/productos?cat=globos-y-pinatas&subcat=set-de-globos', img: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg' },
-  { key: 'featured-platos-bandejas', title: 'Platos y bandejas', to: '/productos?cat=descartables&subcat=platos', img: 'https://images.pexels.com/photos/5946080/pexels-photo-5946080.jpeg' },
-  { key: 'featured-maquillaje', title: 'Maquillaje', to: '/productos?cat=disfraces&subcat=maquillaje', img: 'https://images.pexels.com/photos/1359301/pexels-photo-1359301.jpeg' },
+  { key: 'featured-numeros-metalizados', title: 'Numeros metalizados', to: '/productos?cat=globos-y-pinatas&subcat=numero-metalizados', img: '' },
+  { key: 'featured-set-de-globos', title: 'Set de globos', to: '/productos?cat=globos-y-pinatas&subcat=set-de-globos', img: '' },
+  { key: 'featured-platos-bandejas', title: 'Platos y bandejas', to: '/productos?cat=descartables&subcat=platos', img: '' },
+  { key: 'featured-maquillaje', title: 'Maquillaje', to: '/productos?cat=disfraces&subcat=maquillaje', img: '' },
 ];
+
+const normalizeImageUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('/')) return `${API_BASE}${raw}`;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return '';
+};
+
+const getTileQuery = (to = '') => {
+  const q = String(to || '').split('?')[1] || '';
+  return new URLSearchParams(q);
+};
+
+const fetchProductsForHomeSlot = async ({ category = '', search = '' }) => {
+  const first = await api.products.list({
+    category,
+    q: search || undefined,
+    page: 1,
+    limit: 80,
+  });
+  const firstItems = Array.isArray(first?.items) ? first.items : [];
+  if (firstItems.length || !search) return firstItems;
+
+  // Fallback: si el subcat no matchea por slug/texto, usar solo categoria.
+  const fallback = await api.products.list({
+    category,
+    page: 1,
+    limit: 80,
+  });
+  return Array.isArray(fallback?.items) ? fallback.items : [];
+};
 
 const Home = () => {
   const navigate = useNavigate();
   const [imageOverrides, setImageOverrides] = useState({});
   const [targetOverrides, setTargetOverrides] = useState({});
+  const [tileImagePools, setTileImagePools] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TILE_POOL_CACHE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+  const [featuredImagePools, setFeaturedImagePools] = useState(() => {
+    try {
+      const raw = localStorage.getItem(FEATURED_POOL_CACHE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+  const [imageTick, setImageTick] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -53,6 +108,105 @@ const Home = () => {
     return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    async function loadFeaturedProductImages() {
+      try {
+        const entries = await Promise.all(
+          featured.map(async (item) => {
+            const params = getTileQuery(item.to);
+            const category = params.get('cat') || '';
+            const search = params.get('subcat') || '';
+            const items = await fetchProductsForHomeSlot({ category, search });
+            const images = [];
+            const seen = new Set();
+            for (const p of items) {
+              const candidateList = [
+                ...(Array.isArray(p.images) ? p.images : []),
+                p.imageUrl,
+                p.image_url,
+                p.imagen,
+              ];
+              for (const c of candidateList) {
+                const url = normalizeImageUrl(c);
+                if (!url || seen.has(url)) continue;
+                seen.add(url);
+                images.push(url);
+                if (images.length >= 16) break;
+              }
+              if (images.length >= 16) break;
+            }
+            return [item.key, images];
+          })
+        );
+        if (!alive) return;
+        const next = Object.fromEntries(entries);
+        setFeaturedImagePools(next);
+        try {
+          localStorage.setItem(FEATURED_POOL_CACHE_KEY, JSON.stringify(next));
+        } catch {}
+      } catch {
+        if (!alive) return;
+        // Conserva cache previo para evitar flash de imagenes fallback.
+      }
+    }
+    loadFeaturedProductImages();
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    async function loadTileProductImages() {
+      try {
+        const entries = await Promise.all(
+          tiles.map(async (tile) => {
+            const params = getTileQuery(tile.to);
+            const category = params.get('cat') || '';
+            const search = params.get('subcat') || '';
+            const items = await fetchProductsForHomeSlot({ category, search });
+            const images = [];
+            const seen = new Set();
+            for (const p of items) {
+              const candidateList = [
+                ...(Array.isArray(p.images) ? p.images : []),
+                p.imageUrl,
+                p.image_url,
+                p.imagen,
+              ];
+              for (const c of candidateList) {
+                const url = normalizeImageUrl(c);
+                if (!url || seen.has(url)) continue;
+                seen.add(url);
+                images.push(url);
+                if (images.length >= 16) break;
+              }
+              if (images.length >= 16) break;
+            }
+            return [tile.key, images];
+          })
+        );
+        if (!alive) return;
+        const next = Object.fromEntries(entries);
+        setTileImagePools(next);
+        try {
+          localStorage.setItem(TILE_POOL_CACHE_KEY, JSON.stringify(next));
+        } catch {}
+      } catch {
+        if (!alive) return;
+        // Conserva cache previo para evitar flash de imagenes fallback.
+      }
+    }
+    loadTileProductImages();
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setImageTick((prev) => prev + 1);
+    }, 60000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const heroImagesResolved = useMemo(
     () => heroImages.map((src, idx) => imageOverrides[heroOverrideKeys[idx]] || src),
     [imageOverrides]
@@ -62,26 +216,64 @@ const Home = () => {
     () =>
       tiles.map((tile) => ({
         ...tile,
-        img: imageOverrides[tile.key] || tile.img,
+        img: (() => {
+          const pool = tileImagePools[tile.key] || [];
+          if (pool.length) return pool[imageTick % pool.length];
+          return '';
+        })(),
       })),
-    [imageOverrides]
+    [tileImagePools, imageTick]
   );
 
   const featuredResolved = useMemo(
     () =>
       featured.map((item) => ({
         ...item,
-        img: imageOverrides[item.key] || item.img,
+        img: (() => {
+          const pool = featuredImagePools[item.key] || [];
+          if (pool.length) return pool[imageTick % pool.length];
+          return '';
+        })(),
         to: targetOverrides[item.key] || item.to,
       })),
-    [imageOverrides, targetOverrides]
+    [targetOverrides, featuredImagePools, imageTick]
+  );
+
+  const heroActiveIndex = heroImagesResolved.length ? (imageTick % heroImagesResolved.length) : 0;
+  const homeDescription =
+    'Cotillon mayorista con envios a todo el pais. Globos, velas, disfraces, descartables y decoracion para fiestas.';
+  const homeSchema = useMemo(
+    () => ({
+      '@context': 'https://schema.org',
+      '@type': 'Store',
+      name: 'CotiStore',
+      description: homeDescription,
+      url: toAbsoluteUrl('/'),
+      image: toAbsoluteUrl(heroImagesResolved[0] || heroImages[0]),
+    }),
+    [heroImagesResolved]
   );
 
 
   return (
-    <main role="main">
+    <>
+      <Seo
+        title="Cotillon mayorista y articulos para fiestas"
+        description={homeDescription}
+        path="/"
+        image={heroImagesResolved[0] || heroImages[0]}
+        jsonLd={homeSchema}
+      />
+      <main role="main">
       {/* HERO */}
-      <Carousel variant="dark" className="mb-4" fade interval={4500}>
+      <Carousel
+        variant="dark"
+        className="mb-4"
+        fade
+        interval={null}
+        activeIndex={heroActiveIndex}
+        onSelect={(idx) => setImageTick(idx)}
+      >
         {heroImagesResolved.map((src, i) => (
           <Carousel.Item key={i}>
             <div style={{ maxHeight: 440, overflow: 'hidden' }}>
@@ -179,13 +371,22 @@ const Home = () => {
             <Col key={i} xs={12} sm={6} md={4}>
               <Card as={Link} to={t.to} className="h-100 text-decoration-none shadow-sm">
                 <div style={{ height: 160, overflow: 'hidden' }}>
-                  <Card.Img
-                    src={t.img}
-                    alt={t.title}
-                    loading="lazy"
-                    decoding="async"
-                    style={{ objectFit: 'cover', height: 160 }}
-                  />
+                  {t.img ? (
+                    <Card.Img
+                      src={t.img}
+                      alt={t.title}
+                      loading="lazy"
+                      decoding="async"
+                      style={{ objectFit: 'cover', height: 160 }}
+                    />
+                  ) : (
+                    <div
+                      className="d-flex align-items-center justify-content-center text-muted small bg-light"
+                      style={{ height: 160 }}
+                    >
+                      Cargando imagenes...
+                    </div>
+                  )}
                 </div>
                 <Card.Body className="d-flex flex-column">
                   <Card.Title className="mb-2 h6">{t.title}</Card.Title>
@@ -212,13 +413,22 @@ const Home = () => {
             <Col key={i} xs={12} sm={6} md={3}>
               <Card as={Link} to={f.to} className="h-100 text-decoration-none shadow-sm">
                 <div style={{ height: 130, overflow: 'hidden' }}>
-                  <Card.Img
-                    src={`${f.img}?auto=compress&cs=tinysrgb&w=1000`}
-                    alt={f.title}
-                    loading="lazy"
-                    decoding="async"
-                    style={{ objectFit: 'cover', height: 130 }}
-                  />
+                  {f.img ? (
+                    <Card.Img
+                      src={f.img}
+                      alt={f.title}
+                      loading="lazy"
+                      decoding="async"
+                      style={{ objectFit: 'cover', height: 130 }}
+                    />
+                  ) : (
+                    <div
+                      className="d-flex align-items-center justify-content-center text-muted small bg-light"
+                      style={{ height: 130 }}
+                    >
+                      Cargando imagenes...
+                    </div>
+                  )}
                 </div>
                 <Card.Body className="py-2">
                   <Card.Title className="h6 mb-0 text-truncate">{f.title}</Card.Title>
@@ -294,7 +504,8 @@ const Home = () => {
           </Card.Body>
         </Card>
       </Container>
-    </main>
+      </main>
+    </>
   );
 };
 
