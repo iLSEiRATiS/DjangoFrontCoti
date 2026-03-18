@@ -85,6 +85,20 @@ a{color:var(--link)} a:hover{opacity:.9}
   padding:.35rem .65rem;
 }
 .nav-link-plain:hover{ color:var(--primary)!important; opacity:.85; }
+.header-contact-btn{
+  background:linear-gradient(135deg, var(--primary), #f15a73);
+  border:0;
+  color:#fff;
+  font-weight:800;
+  border-radius:999px;
+  padding:.55rem 1rem;
+  box-shadow:0 10px 24px rgba(206,37,68,.22);
+}
+.header-contact-btn:hover,
+.header-contact-btn:focus{
+  background:linear-gradient(135deg, #b91f3d, var(--primary));
+  color:#fff;
+}
 
 /* buscador */
 .header-search-form{
@@ -197,6 +211,126 @@ a{color:var(--link)} a:hover{opacity:.9}
   background:#fff; color:#111; border:0; padding:.95rem 1rem; font-weight:600;
 }
 .offcanvas-mobile .list-group-item + .list-group-item{ border-top:1px solid rgba(0,0,0,.08); }
+.mobile-contact-item{
+  background:linear-gradient(135deg, rgba(206,37,68,.12), rgba(231,188,54,.14)) !important;
+  color:#8d1730 !important;
+  font-weight:800 !important;
+  border:1px solid rgba(206,37,68,.18) !important;
+  border-radius:.9rem;
+  margin-bottom:.6rem;
+  box-shadow:0 10px 24px rgba(206,37,68,.08);
+}
+
+.contact-modal .modal-content{
+  background:
+    radial-gradient(circle at top right, rgba(231,188,54,.18), transparent 32%),
+    linear-gradient(180deg, #fff6f8 0%, #ffffff 45%, #fffdf8 100%);
+  border:1px solid rgba(206,37,68,.16);
+  border-radius:1.25rem;
+  overflow:hidden;
+  box-shadow:0 24px 60px rgba(11,18,32,.28);
+  color:#111827;
+}
+.contact-modal-header{
+  border-bottom:1px solid rgba(206,37,68,.12);
+  background:linear-gradient(180deg, rgba(206,37,68,.08), rgba(255,255,255,.35));
+}
+.contact-kicker{
+  display:inline-block;
+  margin-bottom:.35rem;
+  padding:.3rem .7rem;
+  border-radius:999px;
+  background:rgba(231,188,54,.18);
+  color:#9a1731;
+  font-size:.75rem;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.contact-modal-body{
+  padding:1.4rem 1.4rem 1.55rem;
+}
+.contact-modal-copy{
+  color:#4b5563;
+  margin-bottom:1rem;
+  line-height:1.6;
+}
+.contact-modal-copy-secondary{
+  margin-top:-.35rem;
+  color:#7f1630;
+  font-weight:600;
+}
+.contact-form-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:1rem;
+}
+.contact-form-grid .form-label{
+  font-weight:700;
+  color:#7f1630;
+  margin-bottom:.35rem;
+}
+.contact-form-grid .form-control{
+  border-radius:.9rem;
+  border:1px solid rgba(12,16,33,.12);
+  padding:.8rem .9rem;
+  background:#fff;
+  color:#111827;
+  box-shadow:none;
+}
+.contact-form-grid .form-control:focus{
+  border-color:rgba(206,37,68,.45);
+  box-shadow:0 0 0 .22rem rgba(231,188,54,.2);
+}
+.contact-form-full{
+  grid-column:1 / -1;
+}
+.contact-file-help{
+  color:#6b7280;
+}
+.contact-captcha-wrap{
+  padding:.85rem;
+  border-radius:1rem;
+  border:1px dashed rgba(206,37,68,.22);
+  background:rgba(255,255,255,.78);
+}
+.contact-form-actions{
+  grid-column:1 / -1;
+  display:flex;
+  justify-content:flex-end;
+  gap:.75rem;
+  margin-top:.25rem;
+}
+.contact-submit-btn{
+  background:linear-gradient(135deg, var(--primary), #f15a73);
+  border:0;
+  font-weight:800;
+  padding:.8rem 1.2rem;
+  border-radius:.9rem;
+  box-shadow:0 14px 28px rgba(206,37,68,.22);
+}
+.contact-submit-btn:hover,
+.contact-submit-btn:focus{
+  background:linear-gradient(135deg, #b91f3d, var(--primary));
+}
+.contact-success{
+  margin-bottom:1rem;
+  padding:.9rem 1rem;
+  border-radius:.9rem;
+  background:linear-gradient(135deg, rgba(231,188,54,.18), rgba(206,37,68,.08));
+  color:#7a162f;
+  font-weight:700;
+  border:1px solid rgba(206,37,68,.12);
+}
+.contact-error{
+  margin-bottom:1rem;
+  padding:.9rem 1rem;
+  border-radius:.9rem;
+  background:rgba(206,37,68,.1);
+  color:#8f112f;
+  font-weight:700;
+  border:1px solid rgba(206,37,68,.18);
+}
 
 /* Árbol de categorías dentro del panel Productos */
 .products-tree .tree-head{
@@ -782,6 +916,9 @@ a{color:var(--link)} a:hover{opacity:.9}
   .offcanvas, .offcanvas-mobile{ z-index:1200 !important; }
   .offcanvas-backdrop.show{ z-index:1190 !important; }
   .mobile-navrow, .mobile-topbar .icon-btn{ position:relative; z-index:1; }
+  .contact-form-grid{ grid-template-columns:1fr; }
+  .contact-form-actions{ flex-direction:column-reverse; }
+  .contact-form-actions .btn{ width:100%; }
 }
 
 /* sticky footer fallback */

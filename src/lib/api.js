@@ -81,6 +81,9 @@ export const api = {
     updateProfile: (token, d)   => http('/api/account/profile', { method: 'PATCH', token, body: d }),
     changePassword: (token, d)  => http('/api/account/password', { method: 'PATCH', token, body: d })
   },
+  contact: {
+    createJobApplication: (formData) => http('/api/job-applications', { method: 'POST', body: formData })
+  },
   orders: {
     create: (token, data) => http('/api/orders', { method: 'POST', token, body: data }),
     mine:   (token)       => http('/api/orders/mine', { token }),

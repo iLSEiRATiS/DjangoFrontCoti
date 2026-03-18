@@ -91,6 +91,9 @@ export default function Login() {
             <div className="mt-3 text-center">
               No tienes cuenta? <Link to="/register">Registrate</Link>
             </div>
+            <div className="mt-2 text-center text-muted small">
+              Los nuevos registros requieren aprobación del administrador.
+            </div>
           </Card.Body>
         </Card>
       </div>

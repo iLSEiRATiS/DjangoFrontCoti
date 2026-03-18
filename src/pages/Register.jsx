@@ -47,7 +47,10 @@ export default function Register() {
         return;
       }
       if (data?.pending) {
-        setNotice(data?.detail || 'Cuenta creada. Espera aprobacion.');
+        setNotice(data?.detail || 'Cuenta creada. Espera aprobacion del administrador.');
+        setName('');
+        setEmail('');
+        setPassword('');
         return;
       }
       throw new Error(data?.detail || 'Respuesta invalida');
@@ -105,4 +108,3 @@ export default function Register() {
     </div>
   );
 }
-

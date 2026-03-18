@@ -70,6 +70,12 @@ const Home = () => {
   const navigate = useNavigate();
   const [imageOverrides, setImageOverrides] = useState({});
   const [targetOverrides, setTargetOverrides] = useState({});
+  const [marquee, setMarquee] = useState({
+    enabled: false,
+    text: '',
+    textColor: '#ffffff',
+    backgroundColor: '#dc3545',
+  });
   const [tileImagePools, setTileImagePools] = useState(() => {
     try {
       const raw = localStorage.getItem(TILE_POOL_CACHE_KEY);
@@ -98,10 +104,22 @@ const Home = () => {
         if (!alive) return;
         setImageOverrides(data?.byKey || {});
         setTargetOverrides(data?.byKeyTarget || {});
+        setMarquee({
+          enabled: Boolean(data?.marquee?.enabled),
+          text: data?.marquee?.text || '',
+          textColor: data?.marquee?.textColor || '#ffffff',
+          backgroundColor: data?.marquee?.backgroundColor || '#dc3545',
+        });
       } catch {
         if (!alive) return;
         setImageOverrides({});
         setTargetOverrides({});
+        setMarquee({
+          enabled: false,
+          text: '',
+          textColor: '#ffffff',
+          backgroundColor: '#dc3545',
+        });
       }
     }
     loadImages();
@@ -265,6 +283,37 @@ const Home = () => {
         jsonLd={homeSchema}
       />
       <main role="main">
+      {marquee.enabled && marquee.text ? (
+        <div
+          style={{
+            backgroundColor: marquee.backgroundColor,
+            color: marquee.textColor,
+            padding: '10px 0',
+            marginBottom: 16,
+            fontWeight: 700,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-block',
+              paddingLeft: '100%',
+              animation: 'home-marquee-scroll 18s linear infinite',
+            }}
+          >
+            {marquee.text}
+          </div>
+        </div>
+      ) : null}
+      <style>
+        {`
+          @keyframes home-marquee-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+          }
+        `}
+      </style>
       {/* HERO */}
       <Carousel
         variant="dark"
@@ -286,31 +335,6 @@ const Home = () => {
                 style={{ objectFit: 'cover', height: 440 }}
               />
             </div>
-            <Carousel.Caption className="d-flex flex-column align-items-center text-center">
-              <h3
-                className="px-3 py-2 rounded fw-bold"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.78)',
-                  color: '#111',
-                  textShadow: '0 1px 0 rgba(255,255,255,0.6)',
-                  display: 'inline-block',
-                }}
-              >
-                CotiStore Mayorista
-              </h3>
-              <p
-                className="px-3 py-2 rounded mb-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  color: '#111',
-                  textShadow: '0 1px 0 rgba(255,255,255,0.6)',
-                  display: 'inline-block',
-                  marginTop: 8,
-                }}
-              >
-                Todo para tu fiesta, al mejor precio.
-              </p>
-            </Carousel.Caption>
           </Carousel.Item>
         ))}
       </Carousel>
