@@ -5,6 +5,7 @@ import api, { API_BASE } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import Seo from '../components/Seo';
+import { getGenericVariantPrice } from '../lib/productVariants';
 import { normalizeText, toAbsoluteUrl } from '../lib/seo';
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
@@ -72,6 +73,7 @@ export default function ProductDetail() {
           discount: p.discount || p.descuento || null,
           stock: Number(p.stock ?? 0),
           attributes: p.attributes || p.atributos || {},
+          attributesPrice: p.attributes_price || p.atributos_precio || {},
           categoryName: p.category?.name || p.category?.nombre || '',
           categorySlug: p.category?.slug || '',
           images,
@@ -95,7 +97,18 @@ export default function ProductDetail() {
     return () => { alive = false; };
   }, [id]);
 
-  const hasDiscount = useMemo(() => !!(product?.discount?.percent && product.priceOriginal > product.price), [product]);
+  const effectivePrice = useMemo(() => {
+    if (!product) return 0;
+    const genericVariantPrice = getGenericVariantPrice(product, selectedAttrs);
+    if (Number.isFinite(Number(genericVariantPrice)) && Number(genericVariantPrice) > 0) {
+      return Number(genericVariantPrice);
+    }
+    const base = Number(product.price || 0);
+    const original = Number(product.priceOriginal || 0);
+    return base > 0 ? base : original;
+  }, [product, selectedAttrs]);
+  const effectivePriceOriginal = useMemo(() => effectivePrice, [effectivePrice]);
+  const hasDiscount = useMemo(() => !!(product?.discount?.percent && effectivePriceOriginal > effectivePrice), [effectivePrice, effectivePriceOriginal, product]);
   const seoTitle = product ? `${product.name} - mayorista` : 'Detalle de producto';
   const seoDescription = normalizeText(
     product?.description || `Compra ${product?.name || 'producto'} en CotiStore mayorista.`
@@ -119,12 +132,12 @@ export default function ProductDetail() {
       offers: {
         '@type': 'Offer',
         priceCurrency: 'ARS',
-        price: Number(product.price || 0),
+        price: Number(effectivePrice || 0),
         availability: `https://schema.org/${stockState}`,
         url: toAbsoluteUrl(seoPath),
       },
     };
-  }, [id, product, seoDescription, seoPath]);
+  }, [effectivePrice, id, product, seoDescription, seoPath]);
 
   const selectImageByIndex = (idx) => {
     if (!product?.images?.length) return;
@@ -242,18 +255,22 @@ export default function ProductDetail() {
           <Col lg={5}>
             <div className="detail-info">
               <h2 className="detail-title">{product.name}</h2>
-              {hasDiscount ? (
+              {!isLoggedIn ? (
+                <div className="detail-price mb-3">
+                  <span className="text-muted small">Inicia sesion para ver precios</span>
+                </div>
+              ) : hasDiscount ? (
                 <div className="mb-3">
                   <div className="text-muted text-decoration-line-through small">
-                    {money.format(product.priceOriginal)}
+                    {money.format(effectivePriceOriginal)}
                   </div>
                   <div className="d-flex align-items-center gap-2">
-                    <div className="detail-price">{money.format(product.price)}</div>
+                    <div className="detail-price">{money.format(effectivePrice)}</div>
                     <Badge bg="success">-{product.discount.percent}%</Badge>
                   </div>
                 </div>
               ) : (
-                <div className="detail-price mb-3">{money.format(product.price)}</div>
+                <div className="detail-price mb-3">{money.format(effectivePrice)}</div>
               )}
 
               {Object.keys(product.attributes || {}).length > 0 && (
@@ -299,8 +316,8 @@ export default function ProductDetail() {
                     {
                       id: product.id,
                       nombre: product.name,
-                      precio: product.price,
-                      precioOriginal: product.priceOriginal,
+                      precio: effectivePrice,
+                      precioOriginal: effectivePriceOriginal,
                       imagen: product.images[0] || '',
                     },
                     qty,

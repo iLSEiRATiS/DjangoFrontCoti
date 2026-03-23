@@ -79,11 +79,13 @@ export function AuthProvider({ children }) {
   }, [token, user]);
 
   const value = useMemo(
-    () => ({
+    () => {
+      const hasActiveSession = !!token && (loading || !!user);
+      return ({
       token,
       user,
       loading,
-      isLoggedIn: !!token && !!user, // bandera global usada por ProductCard
+      isLoggedIn: hasActiveSession,
       login({ token, user }) {
         setToken(token);
         persistUser(user);
@@ -96,7 +98,8 @@ export function AuthProvider({ children }) {
       logout() {
         logoutInternal();
       },
-    }),
+    });
+    },
     [token, user, loading]
   );
 

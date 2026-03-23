@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import productosData from '../data/productos.json';
 import api, { API_BASE } from '../lib/api';
 import Seo from '../components/Seo';
+import { getGenericVariantPrice } from '../lib/productVariants';
 import { normalizeText, toAbsoluteUrl } from '../lib/seo';
 
 const slugify = (str = '') =>
@@ -1131,7 +1132,8 @@ export default function Productos() {
             return false;
           });
           const precioOriginal = Number(p.priceOriginal ?? p.precioOriginal ?? p.price ?? p.precio ?? 0);
-          const precioBase = Number(p.price ?? p.precio ?? precioOriginal);
+          const precioBaseRaw = Number(p.price ?? p.precio ?? precioOriginal);
+          const precioBase = precioBaseRaw > 0 ? precioBaseRaw : precioOriginal;
           let descuentoPct = Number(p.discount?.percent ?? p.descuento?.percent ?? offer?.porcentaje ?? 0);
           if (!descuentoPct && precioOriginal > 0 && precioBase < precioOriginal) {
             descuentoPct = Math.max(0, Math.round((1 - (precioBase / precioOriginal)) * 100));
@@ -1143,6 +1145,7 @@ export default function Productos() {
           const categoryObj = p.categoria || p.category || null;
           const rawAttributes = p.attributes || p.atributos || {};
           const rawAttributesStock = p.attributes_stock || p.atributos_stock || {};
+          const rawAttributesPrice = p.attributes_price || p.atributos_precio || {};
           const attributes = Object.entries(rawAttributes).reduce((acc, [k, v]) => {
             if (!k) return acc;
             const values = Array.isArray(v) ? v : (v ? [v] : []);
@@ -1172,6 +1175,7 @@ export default function Productos() {
             activo,
             atributos: attributes,
             atributos_stock: rawAttributesStock,
+            atributos_precio: rawAttributesPrice,
             stock: Number(p.stock ?? 0),
           };
         });
@@ -1679,21 +1683,30 @@ export default function Productos() {
   };
 
   const getEffectivePrice = (product, attrs = {}) => {
+    const genericVariantPrice = getGenericVariantPrice(product, attrs);
+    if (Number.isFinite(Number(genericVariantPrice)) && Number(genericVariantPrice) > 0) return Number(genericVariantPrice);
     const modelSel = attrs?.Modelo || attrs?.modelo;
     const qtySel = attrs?.Cantidad || attrs?.cantidad || attrs?.Presentacion || attrs?.presentacion;
     const comboMap = product?.precio_por_combinacion;
     if (comboMap && typeof comboMap === 'object' && modelSel && qtySel) {
       const comboKey = `${modelSel}||${qtySel}`;
       const comboPrice = Number(comboMap[comboKey]);
-      if (Number.isFinite(comboPrice)) return comboPrice;
+      if (Number.isFinite(comboPrice) && comboPrice > 0) return comboPrice;
     }
     const map = product?.precio_por_presentacion;
-    if (!map || typeof map !== 'object') return Number(product?.precio ?? 0);
+    if (!map || typeof map !== 'object') {
+      const base = Number(product?.precio ?? 0);
+      const original = Number(product?.precioOriginal ?? 0);
+      return base > 0 ? base : original;
+    }
     const selected = qtySel;
     const bySelection = selected ? Number(map[selected]) : NaN;
-    if (Number.isFinite(bySelection)) return bySelection;
+    if (Number.isFinite(bySelection) && bySelection > 0) return bySelection;
     const first = Object.values(map).find((v) => Number.isFinite(Number(v)));
-    return Number.isFinite(Number(first)) ? Number(first) : Number(product?.precio ?? 0);
+    if (Number.isFinite(Number(first)) && Number(first) > 0) return Number(first);
+    const base = Number(product?.precio ?? 0);
+    const original = Number(product?.precioOriginal ?? 0);
+    return base > 0 ? base : original;
   };
 
   const resolveProductForCart = (product, attrs = {}) => {
@@ -1928,17 +1941,6 @@ export default function Productos() {
                       <div className="product-price mb-3">
                         {!isLoggedIn ? (
                           <span className="text-muted small">Inicia sesion para ver precios</span>
-                        ) : Number(priceValue ?? 0) <= 0 ? (
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openConsult(p);
-                            }}
-                          >
-                            Consultar
-                          </Button>
                         ) : p.descuento?.percent ? (
                           <div>
                             <div className="text-muted text-decoration-line-through small">
@@ -1964,7 +1966,7 @@ export default function Productos() {
                             value={getCardQty(p, qtyMax)}
                             size="sm"
                             className="product-qty-input"
-                            disabled={!isLoggedIn || Number(priceValue ?? 0) <= 0}
+                            disabled={!isLoggedIn}
                             onChange={(e) => {
                               const val = Math.max(1, Math.min(qtyMax, Number(e.target.value) || 1));
                               setCardQtyByKey((prev) => ({ ...prev, [productKey]: val }));
@@ -1975,14 +1977,14 @@ export default function Productos() {
                           <Button
                             variant="primary"
                             size="sm"
-                            disabled={!isLoggedIn || Number(priceValue ?? 0) <= 0}
+                            disabled={!isLoggedIn}
                             onClick={(e) => {
                               e.stopPropagation();
                               const qty = getCardQty(p, qtyMax);
                               addToCart(resolveProductForCart(p, attrs), Math.max(1, Math.min(qtyMax, qty)), attrs);
                             }}
                           >
-                            {!isLoggedIn ? 'Inicia sesion' : (Number(priceValue ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
+                            {!isLoggedIn ? 'Inicia sesion' : 'Agregar al carrito'}
                           </Button>
                         </div>
                       </div>
@@ -2146,10 +2148,6 @@ export default function Productos() {
                   <div className="fw-bold mb-3">
                     {!isLoggedIn ? (
                       <span className="text-muted small">Inicia sesion para ver precios</span>
-                    ) : Number(detailPriceValue ?? 0) <= 0 ? (
-                      <Button variant="outline-primary" size="sm" onClick={() => openConsult(detailProduct)}>
-                        Consultar
-                      </Button>
                     ) : detailProduct.descuento?.percent ? (
                       <div>
                         <div className="text-muted text-decoration-line-through small">
@@ -2211,12 +2209,12 @@ export default function Productos() {
                   <Button
                     variant="primary"
                     className={isMobile ? 'w-100' : ''}
-                    disabled={!isLoggedIn || Number(detailPriceValue ?? 0) <= 0}
+                    disabled={!isLoggedIn}
                     onClick={() => {
                       addToCart(resolveProductForCart(detailProduct, detailAttrs), detailQty, detailAttrs);
                     }}
                   >
-                    {!isLoggedIn ? 'Inicia sesion' : (Number(detailPriceValue ?? 0) <= 0 ? 'Consultar' : 'Agregar al carrito')}
+                    {!isLoggedIn ? 'Inicia sesion' : 'Agregar al carrito'}
                   </Button>
                 </div>
               </Col>

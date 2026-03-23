@@ -82,7 +82,7 @@ export const api = {
     changePassword: (token, d)  => http('/api/account/password', { method: 'PATCH', token, body: d })
   },
   contact: {
-    createJobApplication: (formData) => http('/api/job-applications', { method: 'POST', body: formData })
+    createSupplierContact: (formData) => http('/api/supplier-contacts', { method: 'POST', body: formData })
   },
   orders: {
     create: (token, data) => http('/api/orders', { method: 'POST', token, body: data }),
