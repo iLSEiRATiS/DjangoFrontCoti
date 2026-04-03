@@ -1,4 +1,4 @@
-// src/components/CarritoOffcanvas.jsx
+import { useEffect, useState } from 'react';
 import {
   Offcanvas,
   Button,
@@ -8,11 +8,13 @@ import {
   Col,
   OverlayTrigger,
   Tooltip,
-  Form
+  Form,
+  Alert,
 } from 'react-bootstrap';
 import { FaTrash, FaPlus, FaMinus } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import api from '../lib/api';
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
@@ -24,9 +26,26 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
     removeFromCart,
     getTotalPrice,
     clearCart,
-    setQuantity
+    setQuantity,
   } = useCart();
   const navigate = useNavigate();
+  const [minOrderAmount, setMinOrderAmount] = useState(100000);
+
+  const totalPrice = getTotalPrice();
+  const belowMinimum = totalPrice < minOrderAmount;
+  useEffect(() => {
+    let alive = true;
+    api.products.storeConfig()
+      .then((data) => {
+        if (!alive) return;
+        setMinOrderAmount(Number(data?.minOrderAmount || 100000));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setMinOrderAmount(100000);
+      });
+    return () => { alive = false; };
+  }, []);
 
   const handleChange = (id, value) => {
     const num = Number(value);
@@ -38,7 +57,7 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
   };
 
   const goCheckout = () => {
-    if (!cartItems.length) return;
+    if (!cartItems.length || belowMinimum) return;
     if (handleClose) handleClose();
     navigate('/checkout');
   };
@@ -50,21 +69,27 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
       placement="end"
       className="cart-offcanvas"
       aria-labelledby="carrito-offcanvas-title"
-      backdrop={true}
+      backdrop
       scroll={false}
     >
       <Offcanvas.Header closeButton>
         <Offcanvas.Title id="carrito-offcanvas-title" className="fw-bold">
-          🛒 Tu carrito
+          Tu carrito
         </Offcanvas.Title>
       </Offcanvas.Header>
 
       <Offcanvas.Body>
         {cartItems.length === 0 ? (
-          <p className="text-center mt-5 text-muted">Carrito vacío.</p>
+          <p className="text-center mt-5 text-muted">Carrito vacio.</p>
         ) : (
           <>
-            {cartItems.map(item => (
+            {belowMinimum && (
+              <Alert variant="warning" className="small">
+                ¡Ya casi terminás tu compra! El mínimo es de {money.format(minOrderAmount)}. Podés agregar algunos productos más para alcanzarlo. ¡Gracias!
+              </Alert>
+            )}
+
+            {cartItems.map((item) => (
               <Card key={item.id} className="mb-3 shadow-sm border-0">
                 <Card.Body>
                   <Row className="align-items-center">
@@ -119,7 +144,6 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
                         <Button
                           size="sm"
                           variant="outline-secondary"
-                          disabled={false}
                           onClick={() => increaseQuantity(item.id)}
                           aria-label={`Aumentar cantidad de ${item.nombre}`}
                         >
@@ -151,7 +175,8 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
             <hr />
 
             <div className="mb-3 text-end">
-              <h5 className="fw-bold">Total: {money.format(getTotalPrice())}</h5>
+              <h5 className="fw-bold mb-1">Total: {money.format(totalPrice)}</h5>
+              <div className="text-muted small">Minimo: {money.format(minOrderAmount)}</div>
             </div>
 
             <Button variant="danger" className="w-100 mb-2" onClick={clearCart}>
@@ -161,6 +186,7 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
               variant="success"
               className="w-100"
               onClick={goCheckout}
+              disabled={belowMinimum}
             >
               Confirmar pedido
             </Button>
@@ -172,4 +198,3 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
 };
 
 export default CarritoOffcanvas;
-

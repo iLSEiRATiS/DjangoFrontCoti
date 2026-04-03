@@ -349,7 +349,7 @@ const Home = () => {
                 <div>
                   <Card.Title className="h6 mb-1">Precios mayoristas</Card.Title>
                   <Card.Text className="mb-0 text-muted small">
-                    Lista optimizada para cotillones y revendedores. Pedidos grandes, mejores condiciones.
+                    Lista optimizada para cotillones y revendedores.
                   </Card.Text>
                 </div>
               </Card.Body>

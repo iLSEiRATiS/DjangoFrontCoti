@@ -112,7 +112,7 @@ function fixSpecificGloboDuplicate(products = []) {
     nombre: 'Globo Metalizado Dorado 32" Sueltos X1 Unidades (ELEGIR NUMERO)',
     precio: 494,
     precioOriginal: 494,
-    descuento: null,
+    descuento: copy[i]?.descuento || null,
   };
   return copy;
 }
@@ -125,6 +125,29 @@ const normalizeImageUrl = (value) => {
   if (raw.startsWith('/')) return `${API_BASE}${raw}`;
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   return '';
+};
+
+const getVideoEmbed = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(raw)) return { type: 'video', src: raw };
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') {
+      const id = url.pathname.replace(/\//g, '').trim();
+      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host.includes('youtube.com')) {
+      const id = url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop();
+      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host.includes('vimeo.com')) {
+      const id = url.pathname.split('/').filter(Boolean).pop();
+      if (id) return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
+    }
+  } catch {}
+  return { type: 'iframe', src: raw };
 };
 
 const normalizeProductName = (name = '') => {
@@ -271,7 +294,7 @@ function mergeSpecificUnitAndDozenProducts(products = []) {
       imagenes: images.length ? images : [primary?.imagen].filter(Boolean),
       precio: Number(priceMap[uniqueLabels[0]] ?? primary?.precio ?? 0),
       precioOriginal: Number(priceMap[uniqueLabels[0]] ?? primary?.precioOriginal ?? primary?.precio ?? 0),
-      descuento: null,
+      descuento: primary?.descuento || null,
       atributos: {
         ...Object.fromEntries(
           Object.entries(primary?.atributos || {}).filter(([k]) => {
@@ -357,7 +380,7 @@ function mergeAntifazVenecianoFamily(products = []) {
     imagenes: images.length ? images : [ref.imagen].filter(Boolean),
     precio: Number(comboPrice['Clasico||1 unidad'] ?? ref.precio ?? 0),
     precioOriginal: Number(comboPrice['Clasico||1 unidad'] ?? ref.precioOriginal ?? ref.precio ?? 0),
-    descuento: null,
+    descuento: ref?.descuento || null,
     atributos: {
       ...Object.fromEntries(
         Object.entries(ref.atributos || {}).filter(([k]) => {
@@ -1164,6 +1187,7 @@ export default function Productos() {
             precio,
             precioOriginal,
             descuento,
+            videoUrl: p.videoUrl || p.video_url || '',
             imagen: img,
             imagenes: images.length ? images : [img],
             categoria: categoryName || 'General',
@@ -1682,7 +1706,7 @@ export default function Productos() {
     return out;
   };
 
-  const getEffectivePrice = (product, attrs = {}) => {
+  const getEffectiveBasePrice = (product, attrs = {}) => {
     const genericVariantPrice = getGenericVariantPrice(product, attrs);
     if (Number.isFinite(Number(genericVariantPrice)) && Number(genericVariantPrice) > 0) return Number(genericVariantPrice);
     const modelSel = attrs?.Modelo || attrs?.modelo;
@@ -1709,10 +1733,25 @@ export default function Productos() {
     return base > 0 ? base : original;
   };
 
+  const getEffectiveOriginalPrice = (product, attrs = {}) => {
+    const basePrice = getEffectiveBasePrice(product, attrs);
+    return basePrice > 0 ? basePrice : Number(product?.precioOriginal ?? product?.precio ?? 0);
+  };
+
+  const getEffectivePrice = (product, attrs = {}) => {
+    const original = getEffectiveOriginalPrice(product, attrs);
+    const discountPct = Number(product?.descuento?.percent ?? 0);
+    if (discountPct > 0 && original > 0) {
+      return +(original * (1 - discountPct / 100)).toFixed(2);
+    }
+    return original;
+  };
+
   const resolveProductForCart = (product, attrs = {}) => {
     const selectedModel = attrs?.Modelo || attrs?.modelo;
     const selectedPresentation = attrs?.Cantidad || attrs?.cantidad || attrs?.Presentacion || attrs?.presentacion;
     const price = getEffectivePrice(product, attrs);
+    const originalPrice = getEffectiveOriginalPrice(product, attrs);
     const comboKey = selectedModel && selectedPresentation ? `${selectedModel}||${selectedPresentation}` : null;
     const comboIds = product?.product_id_por_combinacion || {};
     const comboStock = product?.stock_por_combinacion || {};
@@ -1723,7 +1762,7 @@ export default function Productos() {
     return {
       ...product,
       precio: Number(price),
-      precioOriginal: Number(price),
+      precioOriginal: Number(originalPrice),
       sourceProductId: resolvedProductId || product.sourceProductId || product.id || product._id || null,
       maxStock: Number.isFinite(Number(resolvedStock)) ? Number(resolvedStock) : Number(product.stock ?? 0),
     };
@@ -1759,6 +1798,7 @@ export default function Productos() {
 
   const detailAttrs = detailProduct ? getSelectedAttributes(detailProduct) : {};
   const detailPriceValue = detailProduct ? getEffectivePrice(detailProduct, detailAttrs) : 0;
+  const detailPriceOriginalValue = detailProduct ? getEffectiveOriginalPrice(detailProduct, detailAttrs) : 0;
 
   return (
     <>
@@ -1868,6 +1908,7 @@ export default function Productos() {
             {paginated.map((p) => {
               const attrs = getSelectedAttributes(p);
               const priceValue = getEffectivePrice(p, attrs);
+              const priceOriginalValue = getEffectiveOriginalPrice(p, attrs);
               const qtyMax = 999;
               const productKey = getProductKey(p);
 
@@ -1944,7 +1985,7 @@ export default function Productos() {
                         ) : p.descuento?.percent ? (
                           <div>
                             <div className="text-muted text-decoration-line-through small">
-                              {money.format(Number(p.precioOriginal ?? 0))}
+                              {money.format(Number(priceOriginalValue ?? 0))}
                             </div>
                             <div className="d-flex align-items-center gap-2">
                               <span>{money.format(Number(priceValue ?? 0))}</span>
@@ -2105,6 +2146,15 @@ export default function Productos() {
               <Col lg={7}>
                 <div className="detail-gallery">
                   <div className="detail-thumbs">
+                    {detailProduct.videoUrl ? (
+                      <button
+                        type="button"
+                        className={`detail-thumb-btn ${!detailImage ? 'is-active' : ''}`}
+                        onClick={() => setDetailImage('')}
+                      >
+                        <div className="detail-video-thumb">Video</div>
+                      </button>
+                    ) : null}
                     {(detailProduct.imagenes || []).map((img, idx) => (
                       <button
                         key={`detail-thumb-${idx}`}
@@ -2130,6 +2180,28 @@ export default function Productos() {
                           <button type="button" className="detail-main-nav detail-main-next" onClick={() => moveDetailImage(1)}>›</button>
                         )}
                       </>
+                    ) : detailProduct.videoUrl ? (
+                      (() => {
+                        const embed = getVideoEmbed(detailProduct.videoUrl);
+                        if (!embed) return <div className="detail-empty-image">Sin video</div>;
+                        if (embed.type === 'video') {
+                          return (
+                            <video className="detail-video-player" controls preload="metadata">
+                              <source src={embed.src} />
+                              Tu navegador no soporta video HTML5.
+                            </video>
+                          );
+                        }
+                        return (
+                          <iframe
+                            className="detail-video-player"
+                            src={embed.src}
+                            title={`Video de ${detailProduct.nombre}`}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        );
+                      })()
                     ) : (
                       <div className="detail-empty-image">Sin imagen</div>
                     )}
@@ -2151,7 +2223,7 @@ export default function Productos() {
                     ) : detailProduct.descuento?.percent ? (
                       <div>
                         <div className="text-muted text-decoration-line-through small">
-                          {money.format(Number(detailProduct.precioOriginal ?? 0))}
+                          {money.format(Number(detailPriceOriginalValue ?? 0))}
                         </div>
                         <div className="d-flex align-items-center gap-2">
                           <span>{money.format(Number(detailPriceValue ?? 0))}</span>

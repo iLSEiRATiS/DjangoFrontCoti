@@ -74,7 +74,8 @@ export const api = {
     get:  (id)     => http(`/api/products/${encodeURIComponent(id)}`),
     categories: () => http('/api/categories'),
     offers: () => http('/api/offers'),
-    homeImages: () => http('/api/home-images')
+    homeImages: () => http('/api/home-images'),
+    storeConfig: () => http('/api/store-config')
   },
   account: {
     profile: (token)            => http('/api/account/profile', { token }),

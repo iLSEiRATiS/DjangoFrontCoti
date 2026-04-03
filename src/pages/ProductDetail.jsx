@@ -18,6 +18,29 @@ const normalizeImageUrl = (value) => {
   return '';
 };
 
+const getVideoEmbed = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(raw)) return { type: 'video', src: raw };
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') {
+      const id = url.pathname.replace(/\//g, '').trim();
+      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host.includes('youtube.com')) {
+      const id = url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop();
+      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host.includes('vimeo.com')) {
+      const id = url.pathname.split('/').filter(Boolean).pop();
+      if (id) return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
+    }
+  } catch {}
+  return { type: 'iframe', src: raw };
+};
+
 const norm = (s = '') =>
   s
     .toString()
@@ -76,6 +99,7 @@ export default function ProductDetail() {
           attributesPrice: p.attributes_price || p.atributos_precio || {},
           categoryName: p.category?.name || p.category?.nombre || '',
           categorySlug: p.category?.slug || '',
+          videoUrl: p.videoUrl || p.video_url || '',
           images,
         };
         const initialAttrs = {};
@@ -97,22 +121,31 @@ export default function ProductDetail() {
     return () => { alive = false; };
   }, [id]);
 
-  const effectivePrice = useMemo(() => {
+  const effectivePriceOriginal = useMemo(() => {
     if (!product) return 0;
     const genericVariantPrice = getGenericVariantPrice(product, selectedAttrs);
     if (Number.isFinite(Number(genericVariantPrice)) && Number(genericVariantPrice) > 0) {
       return Number(genericVariantPrice);
     }
-    const base = Number(product.price || 0);
     const original = Number(product.priceOriginal || 0);
-    return base > 0 ? base : original;
+    const base = Number(product.price || 0);
+    return original > 0 ? original : base;
   }, [product, selectedAttrs]);
-  const effectivePriceOriginal = useMemo(() => effectivePrice, [effectivePrice]);
-  const hasDiscount = useMemo(() => !!(product?.discount?.percent && effectivePriceOriginal > effectivePrice), [effectivePrice, effectivePriceOriginal, product]);
+
+  const effectivePrice = useMemo(() => {
+    if (!product) return 0;
+    const discountPct = Number(product?.discount?.percent || 0);
+    if (discountPct > 0 && effectivePriceOriginal > 0) {
+      return +(effectivePriceOriginal * (1 - discountPct / 100)).toFixed(2);
+    }
+    const base = Number(product.price || 0);
+    return base > 0 ? base : effectivePriceOriginal;
+  }, [effectivePriceOriginal, product]);
+
+  const hasDiscount = useMemo(() => effectivePriceOriginal > effectivePrice, [effectivePrice, effectivePriceOriginal]);
+  const videoEmbed = useMemo(() => getVideoEmbed(product?.videoUrl), [product?.videoUrl]);
   const seoTitle = product ? `${product.name} - mayorista` : 'Detalle de producto';
-  const seoDescription = normalizeText(
-    product?.description || `Compra ${product?.name || 'producto'} en CotiStore mayorista.`
-  );
+  const seoDescription = normalizeText(product?.description || `Compra ${product?.name || 'producto'} en CotiStore mayorista.`);
   const seoImage = product?.images?.[0] || '';
   const seoPath = `/productos/${encodeURIComponent(id || '')}`;
   const seoSchema = useMemo(() => {
@@ -125,10 +158,7 @@ export default function ProductDetail() {
       description: seoDescription,
       image: (product.images || []).map((img) => toAbsoluteUrl(img)),
       sku: String(product.id || id || ''),
-      brand: {
-        '@type': 'Brand',
-        name: 'CotiStore',
-      },
+      brand: { '@type': 'Brand', name: 'CotiStore' },
       offers: {
         '@type': 'Offer',
         priceCurrency: 'ARS',
@@ -176,178 +206,174 @@ export default function ProductDetail() {
 
   return (
     <>
-      <Seo
-        title={seoTitle}
-        description={seoDescription}
-        path={seoPath}
-        image={seoImage}
-        type="product"
-        jsonLd={seoSchema}
-      />
+      <Seo title={seoTitle} description={seoDescription} path={seoPath} image={seoImage} type="product" jsonLd={seoSchema} />
       <Container className="py-3">
-      <div className="detail-breadcrumb mb-2">
-        <Link to="/">Inicio</Link>
-        <span>/</span>
-        <Link to="/productos">Productos</Link>
-        {!!product.categoryName && (
-          <>
-            <span>/</span>
-            <Link to={product.categorySlug ? `/productos?cat=${encodeURIComponent(product.categorySlug)}` : '/productos'}>
-              {product.categoryName}
-            </Link>
-          </>
-        )}
-        <span>/</span>
-        <span className="text-muted">{product.name}</span>
-      </div>
+        <div className="detail-breadcrumb mb-2">
+          <Link to="/">Inicio</Link>
+          <span>/</span>
+          <Link to="/productos">Productos</Link>
+          {!!product.categoryName && (
+            <>
+              <span>/</span>
+              <Link to={product.categorySlug ? `/productos?cat=${encodeURIComponent(product.categorySlug)}` : '/productos'}>
+                {product.categoryName}
+              </Link>
+            </>
+          )}
+          <span>/</span>
+          <span className="text-muted">{product.name}</span>
+        </div>
 
-      <div className="product-detail-shell">
-        <Row className="g-3">
-          <Col lg={7}>
-            <div className="detail-gallery">
-              <div className="detail-thumbs">
-                {product.images.map((img, idx) => (
-                  <button
-                    key={`thumb-${idx}`}
-                    type="button"
-                    className={`detail-thumb-btn ${selectedImage === img ? 'is-active' : ''}`}
-                    onClick={() => selectImageByIndex(idx)}
-                  >
-                    <img src={img} alt={`${product.name} ${idx + 1}`} />
-                  </button>
-                ))}
+        <div className="product-detail-shell">
+          <Row className="g-3">
+            <Col lg={7}>
+              <div className="detail-gallery">
+                <div className="detail-thumbs">
+                  {product.videoUrl ? (
+                    <button
+                      type="button"
+                      className={`detail-thumb-btn ${!selectedImage ? 'is-active' : ''}`}
+                      onClick={() => setSelectedImage('')}
+                    >
+                      <div className="detail-video-thumb">Video</div>
+                    </button>
+                  ) : null}
+                  {product.images.map((img, idx) => (
+                    <button
+                      key={`thumb-${idx}`}
+                      type="button"
+                      className={`detail-thumb-btn ${selectedImage === img ? 'is-active' : ''}`}
+                      onClick={() => selectImageByIndex(idx)}
+                    >
+                      <img src={img} alt={`${product.name} ${idx + 1}`} />
+                    </button>
+                  ))}
+                </div>
+                <div className="detail-main-image">
+                  {selectedImage ? (
+                    <>
+                      <button type="button" className="detail-main-nav detail-main-prev" onClick={() => selectImageByIndex(selectedImageIndex - 1)} aria-label="Imagen anterior">
+                        ‹
+                      </button>
+                      <img src={selectedImage} alt={product.name} />
+                      <button type="button" className="detail-main-nav detail-main-next" onClick={() => selectImageByIndex(selectedImageIndex + 1)} aria-label="Imagen siguiente">
+                        ›
+                      </button>
+                      <button type="button" className="detail-zoom-btn" aria-label="Ampliar imagen" onClick={openZoom}>
+                        ⤢
+                      </button>
+                    </>
+                  ) : videoEmbed ? (
+                    videoEmbed.type === 'video' ? (
+                      <video className="detail-video-player" controls preload="metadata">
+                        <source src={videoEmbed.src} />
+                        Tu navegador no soporta video HTML5.
+                      </video>
+                    ) : (
+                      <iframe
+                        className="detail-video-player"
+                        src={videoEmbed.src}
+                        title={`Video de ${product.name}`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    )
+                  ) : (
+                    <div className="detail-empty-image">Sin imagen</div>
+                  )}
+                </div>
               </div>
-              <div className="detail-main-image">
-                {selectedImage ? (
-                  <>
-                    <button
-                      type="button"
-                      className="detail-main-nav detail-main-prev"
-                      onClick={() => selectImageByIndex(selectedImageIndex - 1)}
-                      aria-label="Imagen anterior"
-                    >
-                      ‹
-                    </button>
-                    <img src={selectedImage} alt={product.name} />
-                    <button
-                      type="button"
-                      className="detail-main-nav detail-main-next"
-                      onClick={() => selectImageByIndex(selectedImageIndex + 1)}
-                      aria-label="Imagen siguiente"
-                    >
-                      ›
-                    </button>
-                    <button
-                      type="button"
-                      className="detail-zoom-btn"
-                      aria-label="Ampliar imagen"
-                      onClick={openZoom}
-                    >
-                      ⤢
-                    </button>
-                  </>
+            </Col>
+            <Col lg={5}>
+              <div className="detail-info">
+                <h2 className="detail-title">{product.name}</h2>
+                {!isLoggedIn ? (
+                  <div className="detail-price mb-3">
+                    <span className="text-muted small">Inicia sesion para ver precios</span>
+                  </div>
+                ) : hasDiscount ? (
+                  <div className="mb-3">
+                    <div className="text-muted text-decoration-line-through small">{money.format(effectivePriceOriginal)}</div>
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="detail-price">{money.format(effectivePrice)}</div>
+                      <Badge bg="success">-{product.discount.percent}%</Badge>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="detail-empty-image">Sin imagen</div>
+                  <div className="detail-price mb-3">{money.format(effectivePrice)}</div>
+                )}
+
+                {Object.keys(product.attributes || {}).length > 0 && (
+                  <div className="mb-3">
+                    {Object.entries(product.attributes).map(([attrName, values]) => {
+                      const options = getAttributeOptions(attrName, values, product.name);
+                      if (!options.length) return null;
+                      return (
+                        <Form.Group className="mb-2" key={attrName}>
+                          <Form.Label className="small text-muted">{attrName}</Form.Label>
+                          <Form.Select value={selectedAttrs[attrName] || options[0]} onChange={(e) => setSelectedAttrs((prev) => ({ ...prev, [attrName]: e.target.value }))}>
+                            {options.map((opt) => <option key={`${attrName}-${opt}`} value={opt}>{opt}</option>)}
+                          </Form.Select>
+                        </Form.Group>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="mb-3">
+                  <Form.Label className="small text-muted">Cantidad</Form.Label>
+                  <InputGroup style={{ maxWidth: 180 }}>
+                    <Form.Control type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} />
+                  </InputGroup>
+                </div>
+
+                {!isLoggedIn ? (
+                  <Alert variant="warning" className="small mb-0">Inicia sesion para ver precios y comprar.</Alert>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={() => addToCart(
+                      {
+                        id: product.id,
+                        nombre: product.name,
+                        precio: effectivePrice,
+                        precioOriginal: effectivePriceOriginal,
+                        imagen: product.images[0] || '',
+                      },
+                      qty,
+                      selectedAttrs
+                    )}
+                  >
+                    Agregar al carrito
+                  </Button>
+                )}
+
+                {!!product.videoUrl && (
+                  <div className="mt-3">
+                    <Button variant="outline-secondary" size="sm" onClick={() => setSelectedImage('')}>
+                      Ver video del producto
+                    </Button>
+                  </div>
+                )}
+
+                {!!product.description && (
+                  <div className="mt-3 small text-muted">{product.description}</div>
                 )}
               </div>
+            </Col>
+          </Row>
+        </div>
+
+        <Modal show={zoomOpen} onHide={() => setZoomOpen(false)} centered size="xl">
+          <Modal.Header closeButton>
+            <Modal.Title>{product.name}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-0">
+            <div className="detail-zoom-wrap">
+              {selectedImage ? <img src={selectedImage} alt={product.name} /> : null}
             </div>
-          </Col>
-          <Col lg={5}>
-            <div className="detail-info">
-              <h2 className="detail-title">{product.name}</h2>
-              {!isLoggedIn ? (
-                <div className="detail-price mb-3">
-                  <span className="text-muted small">Inicia sesion para ver precios</span>
-                </div>
-              ) : hasDiscount ? (
-                <div className="mb-3">
-                  <div className="text-muted text-decoration-line-through small">
-                    {money.format(effectivePriceOriginal)}
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <div className="detail-price">{money.format(effectivePrice)}</div>
-                    <Badge bg="success">-{product.discount.percent}%</Badge>
-                  </div>
-                </div>
-              ) : (
-                <div className="detail-price mb-3">{money.format(effectivePrice)}</div>
-              )}
-
-              {Object.keys(product.attributes || {}).length > 0 && (
-                <div className="mb-3">
-                  {Object.entries(product.attributes).map(([attrName, values]) => {
-                    const options = getAttributeOptions(attrName, values, product.name);
-                    if (!options.length) return null;
-                    return (
-                      <Form.Group className="mb-2" key={attrName}>
-                        <Form.Label className="small text-muted">{attrName}</Form.Label>
-                        <Form.Select
-                          value={selectedAttrs[attrName] || options[0]}
-                          onChange={(e) => setSelectedAttrs((prev) => ({ ...prev, [attrName]: e.target.value }))}
-                        >
-                          {options.map((opt) => <option key={`${attrName}-${opt}`} value={opt}>{opt}</option>)}
-                        </Form.Select>
-                      </Form.Group>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="mb-3">
-                <Form.Label className="small text-muted">Cantidad</Form.Label>
-                <InputGroup style={{ maxWidth: 180 }}>
-                  <Form.Control
-                    type="number"
-                    min={1}
-                    value={qty}
-                    onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-                  />
-                </InputGroup>
-              </div>
-
-              {!isLoggedIn ? (
-                <Alert variant="warning" className="small mb-0">
-                  Inicia sesion para ver precios y comprar.
-                </Alert>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => addToCart(
-                    {
-                      id: product.id,
-                      nombre: product.name,
-                      precio: effectivePrice,
-                      precioOriginal: effectivePriceOriginal,
-                      imagen: product.images[0] || '',
-                    },
-                    qty,
-                    selectedAttrs
-                  )}
-                >
-                  Agregar al carrito
-                </Button>
-              )}
-
-              {!!product.description && (
-                <div className="mt-3 small text-muted">
-                  {product.description}
-                </div>
-              )}
-            </div>
-          </Col>
-        </Row>
-      </div>
-
-      <Modal show={zoomOpen} onHide={() => setZoomOpen(false)} centered size="xl">
-        <Modal.Header closeButton>
-          <Modal.Title>{product.name}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-0">
-          <div className="detail-zoom-wrap">
-            {selectedImage ? <img src={selectedImage} alt={product.name} /> : null}
-          </div>
-        </Modal.Body>
-      </Modal>
+          </Modal.Body>
+        </Modal>
       </Container>
     </>
   );

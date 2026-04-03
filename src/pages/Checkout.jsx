@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Alert, Button, Form, Spinner, Badge } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+
+const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 export default function Checkout() {
   const { token, user, updateUser, logout } = useAuth();
@@ -12,24 +14,31 @@ export default function Checkout() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-  const [shipping, setShipping] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.profile?.phone || user?.shipping?.phone || '', address: user?.shipping?.address || '', city: user?.shipping?.city || '', zip: user?.shipping?.zip || '' });
+  const [minOrderAmount, setMinOrderAmount] = useState(100000);
+  const [shipping, setShipping] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.profile?.phone || user?.shipping?.phone || '',
+    address: user?.shipping?.address || '',
+    city: user?.shipping?.city || '',
+    zip: user?.shipping?.zip || '',
+  });
   const [comment, setComment] = useState('');
   const [createdOrder, setCreatedOrder] = useState(null);
 
   const items = Array.isArray(cartItems) ? cartItems : [];
   const computed = useMemo(() => {
-      const list = items.map(it => {
-        const qty = Number(it.cantidad ?? it.quantity ?? it.qty ?? 1);
-        const price = Number(it.precio ?? it.price ?? 0);
-        const name = it.nombre || it.name || it.title || 'Producto';
-        const rawId = String(it.productId || it._id || it.id || '');
-        const baseId = rawId.includes('::') ? rawId.split('::')[0] : rawId;
-        // Compatibilidad con carritos viejos que guardaron ids sintéticos merged-*
-        const mergedMatch = /^merged-(?:[^-]+)-(.+)$/i.exec(baseId);
-        const productId = String((mergedMatch && mergedMatch[1]) || baseId || '');
-        const attributes = it.atributos || it.attributes || {};
-        return { productId, name, price, qty, attributes };
-      });
+    const list = items.map((it) => {
+      const qty = Number(it.cantidad ?? it.quantity ?? it.qty ?? 1);
+      const price = Number(it.precio ?? it.price ?? 0);
+      const name = it.nombre || it.name || it.title || 'Producto';
+      const rawId = String(it.productId || it._id || it.id || '');
+      const baseId = rawId.includes('::') ? rawId.split('::')[0] : rawId;
+      const mergedMatch = /^merged-(?:[^-]+)-(.+)$/i.exec(baseId);
+      const productId = String((mergedMatch && mergedMatch[1]) || baseId || '');
+      const attributes = it.atributos || it.attributes || {};
+      return { productId, name, price, qty, attributes };
+    });
     const totals = list.reduce((acc, it) => {
       acc.items += it.qty;
       acc.amount += it.qty * it.price;
@@ -38,25 +47,61 @@ export default function Checkout() {
     totals.amount = +totals.amount.toFixed(2);
     return { list, totals };
   }, [items]);
+
+  useEffect(() => {
+    let alive = true;
+    api.products.storeConfig()
+      .then((data) => {
+        if (!alive) return;
+        setMinOrderAmount(Number(data?.minOrderAmount || 100000));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setMinOrderAmount(100000);
+      });
+    return () => { alive = false; };
+  }, []);
+
+  const belowMinimum = computed.totals.amount < minOrderAmount;
   const missingFields = [
     !shipping.name && 'nombre',
     !shipping.email && 'email',
-    !shipping.phone && 'teléfono',
-    !shipping.address && 'dirección',
+    !shipping.phone && 'telefono',
+    !shipping.address && 'direccion',
     !shipping.city && 'ciudad',
     !shipping.zip && 'cp',
   ].filter(Boolean);
-  const canSubmit = !loading && computed.list.length > 0 && missingFields.length === 0 && !computed.list.some((it) => Number(it.price ?? 0) <= 0);
-
+  const canSubmit = !loading
+    && computed.list.length > 0
+    && missingFields.length === 0
+    && !computed.list.some((it) => Number(it.price ?? 0) <= 0)
+    && !belowMinimum;
 
   async function handlePlaceOrder(e) {
     e.preventDefault();
-    if (!token) { navigate('/login?redirect=/checkout', { replace: true }); return; }
-    if (!computed.list.length) { setErr('Tu carrito está vacío.'); return; }
-    if (missingFields.length > 0) { setErr('Completá los datos del cliente para continuar.'); return; }
-    if (computed.list.some((it) => Number(it.price ?? 0) <= 0)) { setErr('Hay productos sin precio.'); return; }
+    if (!token) {
+      navigate('/login?redirect=/checkout', { replace: true });
+      return;
+    }
+    if (!computed.list.length) {
+      setErr('Tu carrito esta vacio.');
+      return;
+    }
+    if (missingFields.length > 0) {
+      setErr('Completa los datos del cliente para continuar.');
+      return;
+    }
+    if (computed.list.some((it) => Number(it.price ?? 0) <= 0)) {
+      setErr('Hay productos sin precio.');
+      return;
+    }
+    if (belowMinimum) {
+      setErr(`¡Ya casi terminás tu compra! El mínimo es de ${money.format(minOrderAmount)}. Podés agregar algunos productos más para alcanzarlo. ¡Gracias!`);
+      return;
+    }
 
-    setErr(''); setLoading(true);
+    setErr('');
+    setLoading(true);
     try {
       const profileResp = await api.account.updateProfile(token, {
         name: shipping.name,
@@ -78,10 +123,12 @@ export default function Checkout() {
         items: computed.list,
         shipping,
         note: comment.trim(),
-        payment: { method: 'manual' }
+        payment: { method: 'manual' },
       });
       if (typeof clearCart === 'function') clearCart();
-      try { localStorage.removeItem('cart'); } catch {}
+      try {
+        localStorage.removeItem('cart');
+      } catch {}
       setCreatedOrder(resp.order || null);
     } catch (e) {
       if (e?.isAuthError) {
@@ -109,7 +156,7 @@ export default function Checkout() {
         navigate('/login?redirect=/checkout', { replace: true });
         return;
       }
-      setErr(e?.message || 'No se pudo marcar como pagado (¿falta aprobación?)');
+      setErr(e?.message || 'No se pudo marcar como pagado');
     } finally {
       setLoading(false);
     }
@@ -123,7 +170,12 @@ export default function Checkout() {
           {err && <Alert variant="danger" className="mb-3">{err}</Alert>}
           {missingFields.length > 0 && (
             <Alert variant="warning" className="mb-3">
-              Faltan datos del cliente: {missingFields.join(", ")}.
+              Faltan datos del cliente: {missingFields.join(', ')}.
+            </Alert>
+          )}
+          {computed.list.length > 0 && belowMinimum && (
+            <Alert variant="warning" className="mb-3">
+              ¡Ya casi terminás tu compra! El mínimo es de {money.format(minOrderAmount)}. Podés agregar algunos productos más para alcanzarlo. ¡Gracias!
             </Alert>
           )}
           {createdOrder && (
@@ -141,7 +193,7 @@ export default function Checkout() {
                     disabled={(createdOrder.status !== 'approved') || loading}
                     onClick={handleMarkPaid}
                   >
-                    Ya pagué
+                    Ya pague
                   </Button>
                   <Button variant="outline-secondary" size="sm" onClick={() => navigate('/', { replace: true })}>
                     Ir al inicio
@@ -150,7 +202,7 @@ export default function Checkout() {
               </div>
               {createdOrder.status !== 'approved' && (
                 <div className="text-muted small mt-2">
-                  Espera la aprobación del administrador para marcar como pagado.
+                  Espera la aprobacion del administrador para marcar como pagado.
                 </div>
               )}
             </Alert>
@@ -179,9 +231,9 @@ export default function Checkout() {
                       </div>
                     )}
                   </td>
-                  <td className="text-end">${it.price.toFixed(2)}</td>
+                  <td className="text-end">{money.format(it.price)}</td>
                   <td className="text-end">{it.qty}</td>
-                  <td className="text-end">${(it.qty * it.price).toFixed(2)}</td>
+                  <td className="text-end">{money.format(it.qty * it.price)}</td>
                 </tr>
               ))}
               {computed.list.length === 0 && (
@@ -192,7 +244,7 @@ export default function Checkout() {
               <tr>
                 <th colSpan={2}></th>
                 <th className="text-end">{computed.totals.items}</th>
-                <th className="text-end">${computed.totals.amount.toFixed(2)}</th>
+                <th className="text-end">{money.format(computed.totals.amount)}</th>
               </tr>
             </tfoot>
           </Table>
@@ -200,31 +252,31 @@ export default function Checkout() {
           <hr />
 
           <Form onSubmit={handlePlaceOrder}>
-            <h6 className="mb-2">Envío</h6>
+            <h6 className="mb-2">Envio</h6>
             <div className="row">
               <div className="col-md-6 mb-3">
                 <Form.Label>Nombre</Form.Label>
-                <Form.Control value={shipping.name} onChange={e => setShipping(s => ({ ...s, name: e.target.value }))} required />
+                <Form.Control value={shipping.name} onChange={(e) => setShipping((s) => ({ ...s, name: e.target.value }))} required />
               </div>
               <div className="col-md-6 mb-3">
                 <Form.Label>Email</Form.Label>
-                <Form.Control type="email" value={shipping.email} onChange={e => setShipping(s => ({ ...s, email: e.target.value }))} required />
+                <Form.Control type="email" value={shipping.email} onChange={(e) => setShipping((s) => ({ ...s, email: e.target.value }))} required />
               </div>
               <div className="col-md-6 mb-3">
-                <Form.Label>Teléfono</Form.Label>
-                <Form.Control value={shipping.phone} onChange={e => setShipping(s => ({ ...s, phone: e.target.value }))} required />
+                <Form.Label>Telefono</Form.Label>
+                <Form.Control value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} required />
               </div>
               <div className="col-md-6 mb-3">
-                <Form.Label>Dirección</Form.Label>
-                <Form.Control value={shipping.address} onChange={e => setShipping(s => ({ ...s, address: e.target.value }))} required />
+                <Form.Label>Direccion</Form.Label>
+                <Form.Control value={shipping.address} onChange={(e) => setShipping((s) => ({ ...s, address: e.target.value }))} required />
               </div>
               <div className="col-md-6 mb-3">
                 <Form.Label>Ciudad</Form.Label>
-                <Form.Control value={shipping.city} onChange={e => setShipping(s => ({ ...s, city: e.target.value }))} required />
+                <Form.Control value={shipping.city} onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))} required />
               </div>
               <div className="col-md-6 mb-3">
-                <Form.Label>Código Postal</Form.Label>
-                <Form.Control value={shipping.zip} onChange={e => setShipping(s => ({ ...s, zip: e.target.value }))} required />
+                <Form.Label>Codigo Postal</Form.Label>
+                <Form.Control value={shipping.zip} onChange={(e) => setShipping((s) => ({ ...s, zip: e.target.value }))} required />
               </div>
               <div className="col-12 mb-3">
                 <Form.Label>Comentario del pedido (opcional)</Form.Label>
@@ -234,7 +286,7 @@ export default function Checkout() {
                   maxLength={1000}
                   placeholder="Ej: horario de entrega, referencia del pedido, observaciones."
                   value={comment}
-                  onChange={e => setComment(e.target.value)}
+                  onChange={(e) => setComment(e.target.value)}
                 />
               </div>
             </div>
