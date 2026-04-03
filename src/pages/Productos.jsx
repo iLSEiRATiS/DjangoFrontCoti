@@ -1455,7 +1455,7 @@ export default function Productos() {
           children: (c.children || []).map((cc) => cc.label),
         }));
       });
-      return obj;
+      if (Object.keys(obj).length > 0) return obj;
     }
     return buildCategoryTreeFromProducts(baseList);
   }, [baseList, catTree]);
@@ -1944,14 +1944,7 @@ export default function Productos() {
                   </div>
                   <div className="p-3 d-flex flex-column flex-grow-1">
                     <h6 className="product-card-title mb-2">{p.nombre}</h6>
-                    {(p.categoria || p.subcategoria) && (
-                      <div className="mb-2 small text-muted">
-                        <div>{p.categoria || 'General'}</div>
-                        {p.subcategoria && p.subcategoria !== p.categoria && (
-                          <div>{p.subcategoria}</div>
-                        )}
-                      </div>
-                    )}
+                    {/* Categoria/subcategoria oculta en card para una vista mas limpia */}
                     {p.atributos && Object.keys(p.atributos).length > 0 && (
                       <div className="mb-2">
                         {Object.entries(p.atributos).map(([attrName, values]) => {
