@@ -262,7 +262,7 @@ export default function Admin() {
       window.alert('No podés borrarte a vos mismo.');
       return;
     }
-    if (!window.confirm('¿Eliminar este usuario y sus pedidos?')) return;
+    if (!window.confirm('¿Eliminar este usuario?')) return;
     try {
       await api.admin.deleteUser(token, id);
       setUsers(prev => prev.filter(u => (u._id || u.id) !== id));
