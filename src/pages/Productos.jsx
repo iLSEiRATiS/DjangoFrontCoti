@@ -762,11 +762,115 @@ function applyFiltersToProducts(products, filters) {
 }
 
 function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) {
+  const navigate = useNavigate();
   const categories = Object.keys(tree);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [searchingSuggestions, setSearchingSuggestions] = useState(false);
+  const searchShellRef = useRef(null);
+  const searchRequestRef = useRef(0);
 
   const submitSidebarSearch = (e) => {
     e.preventDefault();
     onChange((prev) => ({ ...prev, q: String(prev.q || '').trim() }));
+    setSuggestionsOpen(false);
+  };
+
+  useEffect(() => {
+    const term = String(value?.q || '').trim();
+    const requestId = ++searchRequestRef.current;
+
+    if (term.length < 2) {
+      setSearchSuggestions([]);
+      setSearchingSuggestions(false);
+      setSuggestionsOpen(false);
+      return;
+    }
+
+    setSearchingSuggestions(true);
+    const timer = setTimeout(async () => {
+      try {
+        const data = await api.products.list({ q: term, page: 1, limit: 6 });
+        if (requestId !== searchRequestRef.current) return;
+        const items = Array.isArray(data?.items) ? data.items : [];
+        setSearchSuggestions(items);
+        setSuggestionsOpen(items.length > 0);
+      } catch {
+        if (requestId !== searchRequestRef.current) return;
+        setSearchSuggestions([]);
+        setSuggestionsOpen(false);
+      } finally {
+        if (requestId === searchRequestRef.current) setSearchingSuggestions(false);
+      }
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [value?.q]);
+
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      if (searchShellRef.current?.contains(event.target)) return;
+      setSuggestionsOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, []);
+
+  const openProductFromSuggestion = (product) => {
+    const productId = product?.id || product?._id || product?.slug;
+    if (!productId) {
+      setSuggestionsOpen(false);
+      return;
+    }
+    setSuggestionsOpen(false);
+    navigate(`/productos/${encodeURIComponent(productId)}`);
+  };
+
+  const renderSidebarSuggestions = () => {
+    if (!suggestionsOpen || String(value?.q || '').trim().length < 2) return null;
+
+    return (
+      <div className="header-search-suggestions" role="listbox" aria-label="Sugerencias de búsqueda del catálogo">
+        <div className="header-search-suggestions-head">
+          <span>Sugerencias</span>
+          {searchingSuggestions ? <span className="header-search-suggestions-status">Buscando...</span> : null}
+        </div>
+        {searchSuggestions.map((item) => {
+          let image = item?.imageUrl || item?.image_url || item?.imagen || (Array.isArray(item?.images) ? item.images[0] : '');
+          if (typeof image === 'string' && image.startsWith('/')) image = `${API_BASE}${image}`;
+          const category = item?.category?.name || item?.categoria || '';
+          const productId = item?.id || item?._id || item?.slug || item?.name;
+          return (
+            <button
+              key={`catalog-search-suggestion-${productId}`}
+              type="button"
+              className="header-search-suggestion-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => openProductFromSuggestion(item)}
+            >
+              <div className="header-search-suggestion-thumb">
+                {image ? <img src={image} alt={item?.name || 'Producto'} /> : <span>•</span>}
+              </div>
+              <div className="header-search-suggestion-copy">
+                <strong>{item?.name || item?.nombre || 'Producto'}</strong>
+                {category ? <span>{category}</span> : null}
+              </div>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className="header-search-suggestion-item header-search-suggestion-more"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onChange((prev) => ({ ...prev, q: String(prev.q || '').trim() }));
+            setSuggestionsOpen(false);
+          }}
+        >
+          Ver todos los resultados para "{String(value?.q || '').trim()}"
+        </button>
+      </div>
+    );
   };
 
   const setCategory = (cat) => {
@@ -802,13 +906,16 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
 
         <div className="mb-3">
           <label className="form-label small text-muted mb-1">Buscar producto</label>
-          <form onSubmit={submitSidebarSearch}>
+          <form onSubmit={submitSidebarSearch} ref={searchShellRef} className="catalog-filter-search-shell">
             <div className="input-group">
               <input
                 className="form-control"
                 placeholder="Por nombre..."
                 value={value.q}
                 onChange={(e) => onChange((prev) => ({ ...prev, q: e.target.value }))}
+                onFocus={() => {
+                  if (searchSuggestions.length) setSuggestionsOpen(true);
+                }}
               />
               <button
                 type="submit"
@@ -819,6 +926,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                 &#128269;
               </button>
             </div>
+            {renderSidebarSuggestions()}
           </form>
         </div>
 
