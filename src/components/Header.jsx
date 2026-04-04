@@ -149,6 +149,10 @@ const Header = () => {
         </Container>
       </Navbar>
 
+      <Link to="/" className="corner-brand-badge" aria-label="Volver al inicio">
+        <img src={logo} alt="CotiStore" className="corner-brand-badge-logo" loading="eager" decoding="async" />
+      </Link>
+
       <header className={`mobile-header d-md-none${hideMobileHeader ? ' is-hidden' : ''}`}>
         <div className="mobile-topbar">
           <Link to="/" className="mobile-brand">
