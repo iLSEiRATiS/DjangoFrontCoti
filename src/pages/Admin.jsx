@@ -72,6 +72,9 @@ export default function Admin() {
   const [users, setUsers] = useState([]);
   const [userQ, setUserQ] = useState('');
   const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '' });
+  const [shippingUser, setShippingUser] = useState(null);
+  const [shippingForm, setShippingForm] = useState({ amount: '', note: '' });
+  const [savingShipping, setSavingShipping] = useState(false);
 
   // orders
   const [oLoading, setOLoading] = useState(true);
@@ -282,6 +285,40 @@ export default function Admin() {
     } catch (e) {
       if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo crear el usuario.');
+    }
+  }
+
+  const openShippingEditor = (targetUser) => {
+    setShippingUser(targetUser);
+    setShippingForm({
+      amount: targetUser?.shippingQuote?.amount ?? '',
+      note: targetUser?.shippingQuote?.note || '',
+    });
+  };
+
+  const closeShippingEditor = () => {
+    setShippingUser(null);
+    setShippingForm({ amount: '', note: '' });
+    setSavingShipping(false);
+  };
+
+  async function saveShippingQuote() {
+    const targetId = shippingUser?._id || shippingUser?.id;
+    if (!targetId) return;
+    try {
+      setSavingShipping(true);
+      const updated = await api.admin.updateUser(token, targetId, {
+        shippingQuote: {
+          amount: shippingForm.amount === '' ? null : Number(shippingForm.amount),
+          note: shippingForm.note,
+        },
+      });
+      setUsers((prev) => prev.map((u) => ((u._id || u.id) === targetId ? updated : u)));
+      closeShippingEditor();
+    } catch (e) {
+      if (handleAuthError(e)) return;
+      window.alert(e?.message || 'No se pudo guardar el presupuesto de envío.');
+      setSavingShipping(false);
     }
   }
 
@@ -536,6 +573,7 @@ export default function Admin() {
               <th>Rol</th>
               <th>Teléfono</th>
               <th>Dirección</th>
+              <th>Envío</th>
               <th>Creado</th>
               <th></th>
             </tr>
@@ -547,6 +585,10 @@ export default function Admin() {
               if (avatar && avatar.startsWith('/')) avatar = `${API_BASE}${avatar}`;
               const phone = u.profile?.phone || u.shipping?.phone || '';
               const addr = [u.shipping?.address, u.shipping?.city, u.shipping?.zip].filter(Boolean).join(', ');
+              const shippingAmount = u.shippingQuote?.amount;
+              const shippingSummary = shippingAmount !== null && shippingAmount !== undefined
+                ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(shippingAmount))
+                : 'Pendiente';
               return (
                 <tr key={id}>
                   <td>{avatar ? <img src={avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} /> : null}</td>
@@ -555,15 +597,20 @@ export default function Admin() {
                   <td>{u.role}</td>
                   <td>{phone}</td>
                   <td>{addr || '-'}</td>
+                  <td>
+                    <div className="fw-semibold">{shippingSummary}</div>
+                    <div className="small text-muted">{u.shippingQuote?.note || 'Sin detalle'}</div>
+                  </td>
                   <td>{new Date(u.createdAt).toLocaleString()}</td>
-                  <td className="text-end">
+                  <td className="text-end d-flex flex-wrap gap-2 justify-content-end">
+                    <Button size="sm" variant="outline-primary" onClick={() => openShippingEditor(u)}>Envío</Button>
                     <Button size="sm" variant="outline-danger" onClick={() => handleDeleteUser(id)}>Borrar</Button>
                   </td>
                 </tr>
               );
             })}
             {users.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-3">Sin usuarios.</td></tr>
+              <tr><td colSpan={9} className="text-center py-3">Sin usuarios.</td></tr>
             )}
           </tbody>
         </Table>
@@ -1024,6 +1071,48 @@ export default function Admin() {
         <Modal.Footer>
           <Button variant="outline-secondary" onClick={closeEditOrder}>Cerrar</Button>
           <Button variant="primary" onClick={saveEditOrder} disabled={!editItems.length}>Guardar cambios</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={!!shippingUser} onHide={closeShippingEditor} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Presupuesto de envío</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <div className="text-muted small">Usuario</div>
+            <div className="fw-semibold">{shippingUser?.name || shippingUser?.email || 'Usuario'}</div>
+          </div>
+          <Form.Group className="mb-3">
+            <Form.Label>Monto estimado</Form.Label>
+            <Form.Control
+              type="number"
+              min="0"
+              step="0.01"
+              value={shippingForm.amount}
+              onChange={(e) => setShippingForm((prev) => ({ ...prev, amount: e.target.value }))}
+              placeholder="Ej: 12500"
+            />
+            <Form.Text className="text-muted">
+              Si querés dejarlo sin monto, vaciá el campo.
+            </Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Detalle para el cliente</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={4}
+              value={shippingForm.note}
+              onChange={(e) => setShippingForm((prev) => ({ ...prev, note: e.target.value }))}
+              placeholder="Ej: Envío a domicilio dentro de AMBA. Se coordina después de aprobar el pedido."
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={closeShippingEditor}>Cancelar</Button>
+          <Button variant="primary" onClick={saveShippingQuote} disabled={savingShipping}>
+            {savingShipping ? 'Guardando...' : 'Guardar envío'}
+          </Button>
         </Modal.Footer>
       </Modal>
     </div>

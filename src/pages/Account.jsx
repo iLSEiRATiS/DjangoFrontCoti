@@ -117,6 +117,7 @@ export default function Account() {
   const [err, setErr] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const [avatarFile, setAvatarFile] = useState(null);
+  const [shippingQuote, setShippingQuote] = useState({ amount: null, note: '', updatedAt: null, available: false });
 
   // dirección de envío
   const [ship, setShip] = useState({ name: '', address: '', city: '', zip: '', phone: '' });
@@ -191,6 +192,7 @@ export default function Account() {
         const u = data?.user || user;
         if (!u) return;
         if (alive) {
+          setShippingQuote(u.shippingQuote || { amount: null, note: '', updatedAt: null, available: false });
           setForm({
             firstName: u.firstName || '',
             lastName: u.lastName || '',
@@ -261,6 +263,7 @@ export default function Account() {
         updated = res.user;
       }
       if (updated) login({ token, user: { ...user, ...updated } });
+      if (updated?.shippingQuote) setShippingQuote(updated.shippingQuote);
     } catch (e) {
       if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo actualizar el perfil');
@@ -296,6 +299,7 @@ export default function Account() {
       if (ship.zip && !zipRe.test(ship.zip)) { window.alert('Código postal inválido.'); return; }
       const { user: updated } = await api.account.updateProfile(token, { shipping: ship });
       if (updated) login({ token, user: { ...user, ...updated } });
+      if (updated?.shippingQuote) setShippingQuote(updated.shippingQuote);
     } catch (e) {
       if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo guardar la dirección');
@@ -383,6 +387,14 @@ export default function Account() {
   }
 
   if (!user) return null;
+
+  const shippingAmount = Number(shippingQuote?.amount);
+  const hasShippingQuote = Boolean(
+    shippingQuote?.available || shippingQuote?.amount !== null || String(shippingQuote?.note || '').trim()
+  );
+  const shippingUpdatedLabel = shippingQuote?.updatedAt
+    ? new Date(shippingQuote.updatedAt).toLocaleString()
+    : '';
 
   return (
     <div className="container my-4">
@@ -545,6 +557,40 @@ export default function Account() {
                     </div>
                   </>
                 )}
+              </Tab>
+              <Tab eventKey="shipping" title="Envíos">
+                <div className="mt-3" style={{ maxWidth: 760 }}>
+                  <Alert variant={hasShippingQuote ? 'info' : 'secondary'}>
+                    {hasShippingQuote
+                      ? 'Tu presupuesto de envío fue cargado por el equipo de CotiStore.'
+                      : 'Todavía no tenés un presupuesto de envío asignado. Cuando el equipo lo cargue, va a aparecer acá.'}
+                  </Alert>
+                  <Card>
+                    <Card.Body>
+                      <Row className="g-3">
+                        <Col md={4}>
+                          <div className="text-muted small">Monto estimado</div>
+                          <div className="fs-5 fw-bold">
+                            {Number.isFinite(shippingAmount)
+                              ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(shippingAmount)
+                              : 'Pendiente'}
+                          </div>
+                        </Col>
+                        <Col md={8}>
+                          <div className="text-muted small">Detalle</div>
+                          <div>{shippingQuote?.note || 'Todavía no cargamos un detalle para tu envío.'}</div>
+                        </Col>
+                        <Col xs={12}>
+                          <div className="text-muted small">
+                            {shippingUpdatedLabel
+                              ? `Última actualización: ${shippingUpdatedLabel}`
+                              : 'Apenas el administrador cargue el presupuesto, lo vas a ver reflejado acá.'}
+                          </div>
+                        </Col>
+                      </Row>
+                    </Card.Body>
+                  </Card>
+                </div>
               </Tab>
             </Tabs>
           )}
