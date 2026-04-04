@@ -1642,13 +1642,16 @@ export default function Productos() {
 
   useEffect(() => {
     if (resultsScrollRef.current) {
-      resultsScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      resultsScrollRef.current.scrollTo({ top: 0, behavior: 'auto' });
     }
     if (gridTopRef.current) {
-      const y = gridTopRef.current.getBoundingClientRect().top + window.scrollY - 16;
-      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      const offset = isMobile ? 88 : 16;
+      const y = gridTopRef.current.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+      return;
     }
-  }, [safePage]);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [isMobile, safePage]);
 
   useEffect(() => {
     const el = resultsScrollRef.current;
