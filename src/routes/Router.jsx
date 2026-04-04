@@ -17,6 +17,8 @@ const Admin = lazy(() => import('../pages/Admin'));
 const Panel = lazy(() => import('../pages/Panel'));
 const Orders = lazy(() => import('../pages/Orders'));     // NUEVO
 const Checkout = lazy(() => import('../pages/Checkout')); // NUEVO
+const Terms = lazy(() => import('../pages/Terms'));
+const Privacy = lazy(() => import('../pages/Privacy'));
 
 const NotFound = () => (
   <div className="text-center my-5" role="alert">
@@ -72,6 +74,8 @@ const AppRouter = () => (
               </ProtectedRoute>
             }
           />
+          <Route path="/terminos-y-condiciones" element={<Terms />} />
+          <Route path="/privacidad" element={<Privacy />} />
 
           {/* Admin */}
           <Route

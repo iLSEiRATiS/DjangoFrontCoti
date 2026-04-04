@@ -435,6 +435,94 @@ a{color:var(--link)} a:hover{opacity:.9}
   background:rgba(255,255,255,.1);
   margin:1.25rem 0 1rem;
 }
+.footer-legal-copy{
+  display:block;
+}
+.footer-legal-links{
+  display:flex;
+  align-items:center;
+  gap:1rem;
+  flex-wrap:wrap;
+}
+.footer-legal-link{
+  color:rgba(255,255,255,.72);
+  text-decoration:none;
+  font-size:.875rem;
+}
+.footer-legal-link:hover{
+  color:#fff;
+}
+
+/* =======================================================
+   PAGINAS LEGALES
+   ======================================================= */
+.legal-page{
+  max-width:960px;
+}
+.legal-card{
+  background:#fff;
+  color:#111827;
+  border:1px solid rgba(15,23,42,.08);
+  border-radius:1.25rem;
+  box-shadow:0 16px 40px rgba(15,23,42,.08);
+  padding:1.5rem 1.25rem;
+}
+.legal-kicker{
+  display:inline-block;
+  margin-bottom:.85rem;
+  padding:.35rem .7rem;
+  border-radius:999px;
+  background:rgba(206,37,68,.1);
+  color:#9a1731;
+  font-size:.8rem;
+  font-weight:800;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.legal-card h1{
+  color:#0f172a;
+  font-size:clamp(2rem, 3vw, 2.7rem);
+  margin-bottom:.85rem;
+}
+.legal-lead{
+  color:#475569;
+  font-size:1.02rem;
+  line-height:1.75;
+  margin-bottom:.5rem;
+}
+.legal-meta{
+  color:#64748b;
+  font-size:.92rem;
+  margin-bottom:1.5rem;
+}
+.legal-section + .legal-section{
+  border-top:1px solid rgba(15,23,42,.08);
+  margin-top:1.35rem;
+  padding-top:1.35rem;
+}
+.legal-section h2{
+  font-size:1.18rem;
+  color:#111827;
+  margin-bottom:.65rem;
+}
+.legal-section p,
+.legal-list{
+  color:#374151;
+  line-height:1.75;
+}
+.legal-list{
+  padding-left:1.2rem;
+  margin-bottom:0;
+}
+.legal-list li + li{
+  margin-top:.4rem;
+}
+
+@media (min-width: 768px){
+  .legal-card{
+    padding:2rem 2.1rem;
+  }
+}
 
 /* =======================================================
    PÁGINA DE PRODUCTOS: sidebar + grilla

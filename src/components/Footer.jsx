@@ -1,6 +1,7 @@
 ﻿// src/components/Footer.jsx
 import { useEffect, useState } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import { FaInstagram, FaEnvelope, FaPhoneAlt, FaArrowUp } from 'react-icons/fa';
 
 const Footer = () => {
@@ -76,7 +77,7 @@ const Footer = () => {
           <div className="footer-divider" />
 
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-center pb-2">
-            <small className="text-white-50">
+            <small className="text-white-50 footer-legal-copy">
               © {year} CotiStore — Todos los derechos reservados.{' '}
               <a
                 href="https://miauwdev.com.ar/"
@@ -87,6 +88,14 @@ const Footer = () => {
                 By MiauwDev
               </a>
             </small>
+            <div className="footer-legal-links">
+              <Link to="/terminos-y-condiciones" className="footer-legal-link">
+                Términos y condiciones
+              </Link>
+              <Link to="/privacidad" className="footer-legal-link">
+                Privacidad
+              </Link>
+            </div>
           </div>
         </Container>
       </footer>
