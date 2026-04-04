@@ -278,6 +278,7 @@ const Header = () => {
         <div className="mobile-navrow">
           <button className="hamburger-btn" onClick={() => setShowMobileMenu(true)} aria-label="Abrir menu">
             <FaBars />
+            <span>Inicio</span>
           </button>
         </div>
       </header>
@@ -314,6 +315,9 @@ const Header = () => {
         </Offcanvas.Header>
         <Offcanvas.Body>
           <ListGroup variant="flush" as="nav">
+            <ListGroup.Item action as={Link} to="/" onClick={() => setShowMobileMenu(false)}>
+              Inicio
+            </ListGroup.Item>
             <ListGroup.Item
               className="mobile-contact-item"
               action

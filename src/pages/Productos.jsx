@@ -764,6 +764,11 @@ function applyFiltersToProducts(products, filters) {
 function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) {
   const categories = Object.keys(tree);
 
+  const submitSidebarSearch = (e) => {
+    e.preventDefault();
+    onChange((prev) => ({ ...prev, q: String(prev.q || '').trim() }));
+  };
+
   const setCategory = (cat) => {
     onChange((prev) => ({
       ...prev,
@@ -797,15 +802,24 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
 
         <div className="mb-3">
           <label className="form-label small text-muted mb-1">Buscar producto</label>
-          <div className="input-group">
-            <input
-              className="form-control"
-              placeholder="Por nombre..."
-              value={value.q}
-              onChange={(e) => onChange((prev) => ({ ...prev, q: e.target.value }))}
-            />
-            <span className="input-group-text">&#128269;</span>
-          </div>
+          <form onSubmit={submitSidebarSearch}>
+            <div className="input-group">
+              <input
+                className="form-control"
+                placeholder="Por nombre..."
+                value={value.q}
+                onChange={(e) => onChange((prev) => ({ ...prev, q: e.target.value }))}
+              />
+              <button
+                type="submit"
+                className="input-group-text"
+                aria-label="Buscar en productos"
+                style={{ cursor: 'pointer' }}
+              >
+                &#128269;
+              </button>
+            </div>
+          </form>
         </div>
 
         <div className="mb-2 d-flex align-items-center justify-content-between">
