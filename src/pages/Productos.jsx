@@ -1624,15 +1624,14 @@ export default function Productos() {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
   useEffect(() => {
-    if (!isMobile && resultsScrollRef.current) {
+    if (resultsScrollRef.current) {
       resultsScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
     }
     if (gridTopRef.current) {
       const y = gridTopRef.current.getBoundingClientRect().top + window.scrollY - 16;
       window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
     }
-  }, [safePage, isMobile]);
+  }, [safePage]);
 
   useEffect(() => {
     const el = resultsScrollRef.current;
