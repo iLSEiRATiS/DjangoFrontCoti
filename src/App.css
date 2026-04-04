@@ -632,8 +632,9 @@ a{color:var(--link)} a:hover{opacity:.9}
   background:#fff;
 }
 .filters-sheet{
-  height:50vh;
-  max-height:50vh;
+  height:68vh;
+  min-height:60vh;
+  max-height:68vh;
   border-top-left-radius:18px;
   border-top-right-radius:18px;
 }
@@ -647,6 +648,7 @@ a{color:var(--link)} a:hover{opacity:.9}
 }
 .filters-sheet .offcanvas-body{
   overflow:auto;
+  padding-bottom:calc(20px + env(safe-area-inset-bottom));
 }
 .filters-sheet-expand-btn{
   border:1px solid rgba(0,0,0,.15);
