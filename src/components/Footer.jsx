@@ -21,9 +21,9 @@ const Footer = () => {
     <>
       <footer className="footer-modern text-white mt-4 pt-4" role="contentinfo">
         <Container>
-          <Row className="gy-4 align-items-start">
+          <Row className="gy-4 align-items-start footer-main-grid">
             <Col md={5}>
-              <div className="footer-brand">
+              <div className="footer-brand footer-panel">
                 <h5 className="mb-2">CotiStore</h5>
                 <p className="mb-0 text-white-50 small">
                   Mayorista de artículos de cotillón, repostería, papelería y librería. Calidad y buen precio.
@@ -32,6 +32,7 @@ const Footer = () => {
             </Col>
 
             <Col md={4}>
+              <div className="footer-panel">
               <h6 className="text-uppercase fw-semibold small mb-3 text-white-50">Contacto</h6>
               <ul className="list-unstyled mb-0 small footer-contact">
                 <li className="d-flex align-items-center">
@@ -54,9 +55,11 @@ const Footer = () => {
                   </a>
                 </li>
               </ul>
+              </div>
             </Col>
 
             <Col md={3}>
+              <div className="footer-panel">
               <h6 className="text-uppercase fw-semibold small mb-3 text-white-50">Seguinos</h6>
               <div className="d-flex flex-column gap-2">
                 <a
@@ -71,12 +74,13 @@ const Footer = () => {
                   </span>
                 </a>
               </div>
+              </div>
             </Col>
           </Row>
 
           <div className="footer-divider" />
 
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center pb-2">
+          <div className="footer-legal-wrap pb-2">
             <small className="text-white-50 footer-legal-copy">
               © {year} CotiStore — Todos los derechos reservados.{' '}
               <a
