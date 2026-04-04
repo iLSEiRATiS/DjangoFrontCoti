@@ -919,11 +919,10 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
               />
               <button
                 type="submit"
-                className="input-group-text"
+                className="btn btn-search-accent catalog-filter-search-btn"
                 aria-label="Buscar en productos"
-                style={{ cursor: 'pointer' }}
               >
-                &#128269;
+                Buscar
               </button>
             </div>
             {renderSidebarSuggestions()}

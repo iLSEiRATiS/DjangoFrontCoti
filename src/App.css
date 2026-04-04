@@ -110,6 +110,11 @@ a{color:var(--link)} a:hover{opacity:.9}
 .catalog-filter-search-shell{
   position:relative;
 }
+.catalog-filter-search-btn{
+  min-width:88px;
+  border-top-left-radius:0;
+  border-bottom-left-radius:0;
+}
 .header-search .form-control{
   height:46px; width:100%; background:#fff; color:#111;
   border:1px solid rgba(0,0,0,.12); border-right:none;
