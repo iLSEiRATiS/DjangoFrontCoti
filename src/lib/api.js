@@ -72,7 +72,7 @@ export const api = {
   products: {
     list: (params) => http(`/api/products${qs(params)}`),
     get:  (id)     => http(`/api/products/${encodeURIComponent(id)}`),
-    categories: () => http('/api/categories'),
+    categories: () => http('/api/categories-list'),
     offers: () => http('/api/offers'),
     homeImages: () => http('/api/home-images'),
     storeConfig: () => http('/api/store-config')
