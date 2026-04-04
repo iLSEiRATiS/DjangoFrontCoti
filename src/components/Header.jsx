@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Navbar,
   Nav,
@@ -17,7 +17,7 @@ import CarritoOffcanvas from './CarritoOffcanvas';
 import SupplierContactModal from './SupplierContactModal';
 import logo from '../assets/logo-coti-optimized.webp';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../lib/api';
+import api, { API_BASE } from '../lib/api';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -32,12 +32,60 @@ const Header = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [hideMobileHeader, setHideMobileHeader] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [searchingSuggestions, setSearchingSuggestions] = useState(false);
+  const desktopSearchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
+  const searchRequestRef = useRef(0);
 
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
     const current = qs.get('search') || '';
     setSearchTerm(current);
   }, [location.search]);
+
+  useEffect(() => {
+    const term = searchTerm.trim();
+    const requestId = ++searchRequestRef.current;
+
+    if (term.length < 2) {
+      setSearchSuggestions([]);
+      setSearchingSuggestions(false);
+      setSuggestionsOpen(false);
+      return;
+    }
+
+    setSearchingSuggestions(true);
+    const timer = setTimeout(async () => {
+      try {
+        const data = await api.products.list({ q: term, page: 1, limit: 6 });
+        if (requestId !== searchRequestRef.current) return;
+        const items = Array.isArray(data?.items) ? data.items : [];
+        setSearchSuggestions(items);
+        setSuggestionsOpen(items.length > 0);
+      } catch {
+        if (requestId !== searchRequestRef.current) return;
+        setSearchSuggestions([]);
+        setSuggestionsOpen(false);
+      } finally {
+        if (requestId === searchRequestRef.current) setSearchingSuggestions(false);
+      }
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      const desktopNode = desktopSearchRef.current;
+      const mobileNode = mobileSearchRef.current;
+      if (desktopNode?.contains(event.target) || mobileNode?.contains(event.target)) return;
+      setSuggestionsOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, []);
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -70,6 +118,62 @@ const Header = () => {
       navigate('/productos');
     }
     setShowSearch(false);
+    setSuggestionsOpen(false);
+  };
+
+  const openProductFromSuggestion = (product) => {
+    const productId = product?.id || product?._id || product?.slug;
+    if (!productId) {
+      submitSearch();
+      return;
+    }
+    setSuggestionsOpen(false);
+    setShowSearch(false);
+    navigate(`/productos/${encodeURIComponent(productId)}`);
+  };
+
+  const renderSearchSuggestions = () => {
+    if (!suggestionsOpen || searchTerm.trim().length < 2) return null;
+
+    return (
+      <div className="header-search-suggestions" role="listbox" aria-label="Sugerencias de búsqueda">
+        <div className="header-search-suggestions-head">
+          <span>Sugerencias</span>
+          {searchingSuggestions ? <span className="header-search-suggestions-status">Buscando...</span> : null}
+        </div>
+        {searchSuggestions.map((item) => {
+          let image = item?.imageUrl || item?.image_url || item?.imagen || (Array.isArray(item?.images) ? item.images[0] : '');
+          if (typeof image === 'string' && image.startsWith('/')) image = `${API_BASE}${image}`;
+          const category = item?.category?.name || item?.categoria || '';
+          const productId = item?.id || item?._id || item?.slug || item?.name;
+          return (
+            <button
+              key={`search-suggestion-${productId}`}
+              type="button"
+              className="header-search-suggestion-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => openProductFromSuggestion(item)}
+            >
+              <div className="header-search-suggestion-thumb">
+                {image ? <img src={image} alt={item?.name || 'Producto'} /> : <span>•</span>}
+              </div>
+              <div className="header-search-suggestion-copy">
+                <strong>{item?.name || item?.nombre || 'Producto'}</strong>
+                {category ? <span>{category}</span> : null}
+              </div>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className="header-search-suggestion-item header-search-suggestion-more"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={submitSearch}
+        >
+          Ver todos los resultados para "{searchTerm.trim()}"
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -96,6 +200,7 @@ const Header = () => {
           </div>
 
           <div className="d-flex align-items-center gap-3">
+            <div className="header-search-shell" ref={desktopSearchRef}>
             <Form className="header-search-form" onSubmit={submitSearch} role="search" aria-label="Buscar productos">
               <InputGroup className="header-search">
                 <Form.Control
@@ -103,12 +208,17 @@ const Header = () => {
                   placeholder="Buscar"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => {
+                    if (searchSuggestions.length) setSuggestionsOpen(true);
+                  }}
                 />
                 <Button type="submit" className="btn-search-accent" aria-label="Buscar">
                   <FaSearch className="search-icon" />
                 </Button>
               </InputGroup>
             </Form>
+            {renderSearchSuggestions()}
+            </div>
 
             <Nav className="align-items-center gap-3">
               {user ? (
@@ -177,6 +287,7 @@ const Header = () => {
           <Offcanvas.Title>Buscar productos</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
+          <div ref={mobileSearchRef}>
           <Form onSubmit={submitSearch}>
             <InputGroup>
               <Form.Control
@@ -185,10 +296,15 @@ const Header = () => {
                 placeholder="Buscar por nombre o categoria..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => {
+                  if (searchSuggestions.length) setSuggestionsOpen(true);
+                }}
               />
               <Button type="submit" className="btn-search-accent">Buscar</Button>
             </InputGroup>
           </Form>
+          {renderSearchSuggestions()}
+          </div>
         </Offcanvas.Body>
       </Offcanvas>
 

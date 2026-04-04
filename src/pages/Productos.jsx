@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Container, Row, Col, Button, Dropdown, Badge, Pagination, Form, Spinner, InputGroup, Modal, Offcanvas
+  Container, Row, Col, Button, Dropdown, Badge, Pagination, Form, Spinner, InputGroup, Modal
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -1001,11 +1001,6 @@ export default function Productos() {
   });
   const [cardQtyByKey, setCardQtyByKey] = useState({});
   const [selectedAttrs, setSelectedAttrs] = useState({});
-  const [draftCat, setDraftCat] = useState(cat);
-  const [draftSubcat, setDraftSubcat] = useState(subcat);
-  const [draftFilterQ, setDraftFilterQ] = useState(search);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filtersSheetExpanded, setFiltersSheetExpanded] = useState(false);
   const [remote, setRemote] = useState([]);
   const [totalRemote, setTotalRemote] = useState(0);
   const [pagesRemote, setPagesRemote] = useState(1);
@@ -1251,7 +1246,6 @@ export default function Productos() {
     [baseListRaw]
   );
   const appliedFilters = { q: searchDebounced, category: cat, subcategory: subcat };
-  const draftFilters = { q: draftFilterQ, category: draftCat, subcategory: draftSubcat };
   const filteredByFacets = usingFallback
     ? applyFiltersToProducts(baseList, appliedFilters)
     : baseList;
@@ -1468,28 +1462,8 @@ export default function Productos() {
     setPage(1);
     setFilterTick((t) => t + 1);
   };
-  const handleDraftChange = (updater) => {
-    const next = typeof updater === 'function' ? updater(draftFilters) : updater;
-    setDraftFilterQ(next.q ?? '');
-    setDraftCat(next.category ?? '');
-    setDraftSubcat(next.subcategory ?? '');
-  };
-
-  useEffect(() => {
-    setDraftFilterQ(searchDebounced);
-    setDraftCat(cat);
-    setDraftSubcat(subcat);
-  }, [searchDebounced, cat, subcat]);
-
   const clearAll = () => {
-    const empty = { q: '', category: '', subcategory: '' };
-    if (isMobile) {
-      setDraftFilterQ('');
-      setDraftCat('');
-      setDraftSubcat('');
-    } else {
-      handleAppliedChange(empty);
-    }
+    handleAppliedChange({ q: '', category: '', subcategory: '' });
   };
   const total = usingFallback ? filteredByFacets.length : totalRemote;
   const totalPages = usingFallback ? Math.max(1, Math.ceil(total / per)) : Math.max(1, pagesRemote || 1);
@@ -1617,18 +1591,6 @@ export default function Productos() {
       </div>
     );
   };
-
-  const openFiltersSheet = () => {
-    setDraftFilterQ(searchDebounced);
-    setDraftCat(cat);
-    setDraftSubcat(subcat);
-    setFiltersSheetExpanded(false);
-    setFiltersOpen(true);
-  };
-
-  useEffect(() => {
-    if (!filtersOpen) setFiltersSheetExpanded(false);
-  }, [filtersOpen]);
 
   const openConsult = (product) => {
     setConsultProduct(product);
@@ -1824,16 +1786,6 @@ export default function Productos() {
         </div>
         <div className="catalog-controls">
           {err && <span className="text-danger small me-2">{err}</span>}
-          {isMobile && (
-            <button
-              className="btn btn-dark"
-              type="button"
-              aria-controls="filtersOffcanvas"
-              onClick={openFiltersSheet}
-            >
-              Filtrar
-            </button>
-          )}
           <Dropdown align="end">
             <Dropdown.Toggle size="sm" variant="light" className="catalog-select">
               {SORTERS[sortKey].label}
@@ -1861,7 +1813,7 @@ export default function Productos() {
       </div>
 
       <Row className="g-4 catalog-body">
-        <Col lg={3} className="d-none d-lg-block">
+        <Col xs={12} lg={3}>
           <div className="catalog-filters-sticky">
             <FiltersSidebar
               tree={categoryTree}
@@ -1869,12 +1821,12 @@ export default function Productos() {
               value={appliedFilters}
               onChange={handleAppliedChange}
               onClear={clearAll}
-              isMobile={false}
+              isMobile={isMobile}
             />
           </div>
         </Col>
 
-        <Col lg={9}>
+        <Col xs={12} lg={9}>
           <div className="catalog-scroll-shell" ref={resultsScrollRef}>
           <div className="catalog-progress-track" aria-hidden="true">
             <div className="catalog-progress-fill" style={{ height: `${scrollProgress}%` }} />
@@ -2071,79 +2023,6 @@ export default function Productos() {
           </div>
         </Col>
       </Row>
-
-      {isMobile && (
-        <button
-          type="button"
-          className="catalog-mobile-filters-trigger"
-          aria-controls="filtersOffcanvas"
-          aria-label="Abrir filtros"
-          onClick={openFiltersSheet}
-        >
-          Filtros
-        </button>
-      )}
-
-      <Offcanvas
-        show={filtersOpen}
-        onHide={() => setFiltersOpen(false)}
-        placement="bottom"
-        id="filtersOffcanvas"
-        className={`filters-sheet ${filtersSheetExpanded ? 'is-expanded' : ''}`}
-      >
-        <div className="offcanvas-header">
-          <h5 className="offcanvas-title fw-bold" id="filtersOffcanvasLabel">
-            Filtros
-          </h5>
-          <button
-            type="button"
-            className="filters-sheet-expand-btn"
-            onClick={() => setFiltersSheetExpanded((prev) => !prev)}
-            aria-label={filtersSheetExpanded ? 'Reducir panel de filtros' : 'Expandir panel de filtros'}
-            title={filtersSheetExpanded ? 'Reducir' : 'Expandir'}
-          >
-            {filtersSheetExpanded ? 'Menos' : 'Mas'}
-          </button>
-          <button type="button" className="btn-close" aria-label="Cerrar" onClick={() => setFiltersOpen(false)} />
-        </div>
-        <div className="offcanvas-body d-flex flex-column gap-3">
-          <FiltersSidebar
-            tree={categoryTree}
-            products={baseList}
-            value={isMobile ? draftFilters : appliedFilters}
-            onChange={isMobile ? handleDraftChange : handleAppliedChange}
-            onClear={clearAll}
-            isMobile={true}
-          />
-          <div className="d-grid gap-2 mt-auto">
-            <button
-              type="button"
-              className="btn btn-dark"
-              onClick={() => {
-                handleAppliedChange(draftFilters);
-                setFiltersOpen(false);
-              }}
-            >
-              Aplicar filtros
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={() => {
-                setDraftFilterQ(searchDebounced);
-                setDraftCat(cat);
-                setDraftSubcat(subcat);
-                setFiltersOpen(false);
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-          <div className="text-muted small">
-            En mobile los cambios no se aplican hasta tocar <b>"Aplicar filtros"</b>.
-          </div>
-        </div>
-      </Offcanvas>
 
       <Modal
         show={detailOpen}
