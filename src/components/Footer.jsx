@@ -77,7 +77,15 @@ const Footer = () => {
 
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-center pb-2">
             <small className="text-white-50">
-              © {year} CotiStore — Todos los derechos reservados.
+              © {year} CotiStore — Todos los derechos reservados.{' '}
+              <a
+                href="https://miauwdev.com.ar/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link-light text-decoration-none"
+              >
+                By MiauwDev
+              </a>
             </small>
           </div>
         </Container>
