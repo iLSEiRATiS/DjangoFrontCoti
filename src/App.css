@@ -757,6 +757,38 @@ a{color:var(--link)} a:hover{opacity:.9}
 .menu-scroll{ padding-bottom:.5rem; }
 
 .faceted-sidebar{ background:#fff; border-radius:.9rem; }
+.catalog-categories-toggle{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.75rem;
+  padding:.7rem .85rem;
+  border:1px solid rgba(15,23,42,.08);
+  border-radius:.85rem;
+  background:#f8fafc;
+  color:#111827;
+  font-weight:700;
+}
+.catalog-categories-toggle:hover{
+  background:#f1f5f9;
+}
+.catalog-categories-toggle.is-open{
+  background:#fff6f8;
+  border-color:rgba(206,37,68,.24);
+}
+.catalog-categories-toggle-icon{
+  width:1.75rem;
+  height:1.75rem;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#ffffff;
+  color:#9f1239;
+  font-size:1.1rem;
+  box-shadow:0 4px 10px rgba(15,23,42,.08);
+}
 .facet-header{
   display:flex;
   justify-content:space-between;
@@ -808,6 +840,9 @@ a{color:var(--link)} a:hover{opacity:.9}
 .catalog-controls{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .catalog-select{ border-radius:.8rem !important; }
 .catalog-results-summary{ color:#6b7280; font-size:.85rem; margin-bottom:12px; }
+.catalog-pagination-top{
+  margin-bottom:1rem;
+}
 .catalog-scroll-shell{
   position:relative;
 }

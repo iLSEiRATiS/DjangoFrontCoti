@@ -764,6 +764,7 @@ function applyFiltersToProducts(products, filters) {
 function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) {
   const navigate = useNavigate();
   const categories = Object.keys(tree);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [searchingSuggestions, setSearchingSuggestions] = useState(false);
@@ -894,6 +895,12 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
   const isActiveCat = (cat) => value.category === cat;
   const isActiveSub = (cat, sub) => value.category === cat && value.subcategory === sub;
 
+  useEffect(() => {
+    if (value?.category || value?.subcategory) {
+      setCategoriesOpen(true);
+    }
+  }, [value?.category, value?.subcategory]);
+
   return (
     <div className="card border-0 shadow-sm">
       <div className="card-body">
@@ -929,11 +936,20 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
           </form>
         </div>
 
-        <div className="mb-2 d-flex align-items-center justify-content-between">
-          <div className="small text-muted fw-semibold">Categorías</div>
-        </div>
+        <button
+          type="button"
+          className={`catalog-categories-toggle ${categoriesOpen ? 'is-open' : ''}`}
+          onClick={() => setCategoriesOpen((prev) => !prev)}
+          aria-expanded={categoriesOpen}
+        >
+          <span className="small text-muted fw-semibold">Categorías</span>
+          <span className="catalog-categories-toggle-icon" aria-hidden="true">
+            {categoriesOpen ? '−' : '+'}
+          </span>
+        </button>
 
-        <div className="accordion accordion-flush" id={isMobile ? "accMobile" : "accDesktop"}>
+        {categoriesOpen ? (
+        <div className="accordion accordion-flush mt-2" id={isMobile ? "accMobile" : "accDesktop"}>
           {categories.map((cat, idx) => {
             const collapseId = `${isMobile ? "m" : "d"}-collapse-${idx}`;
             const headerId = `${isMobile ? "m" : "d"}-head-${idx}`;
@@ -1052,6 +1068,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
             );
           })}
         </div>
+        ) : null}
 
         <div className="mt-3 small text-muted">
           <div className="fw-semibold mb-1">Seleccion:</div>
@@ -1983,6 +2000,12 @@ export default function Productos() {
               ? 'Sin resultados'
               : `Mostrando ${startIdx}-${endIdx} de ${total}`}
           </div>
+
+          {totalPages > 1 && (
+            <div className="catalog-pagination-top">
+              {renderPagination()}
+            </div>
+          )}
 
           <Row className="g-4">
             {paginated.map((p) => {
