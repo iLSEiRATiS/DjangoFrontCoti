@@ -992,7 +992,7 @@ export default function Productos() {
   const [detailProduct, setDetailProduct] = useState(null);
   const [detailImage, setDetailImage] = useState('');
   const [detailImageIndex, setDetailImageIndex] = useState(0);
-  const [detailQty, setDetailQty] = useState(1);
+  const [detailQty, setDetailQty] = useState('1');
   const [consultForm, setConsultForm] = useState({
     name: '',
     email: '',
@@ -1648,7 +1648,7 @@ export default function Productos() {
     setDetailProduct(product);
     setDetailImage(imgs[0] || '');
     setDetailImageIndex(0);
-    setDetailQty(1);
+    setDetailQty('1');
     setDetailOpen(true);
   };
 
@@ -1670,10 +1670,17 @@ export default function Productos() {
   const getProductKey = (p) => String(p?.id || `${p?.categoria}-${p?.nombre}`);
 
   const getCardQty = (p, max = 999) => {
+      const key = getProductKey(p);
+      const raw = Number(cardQtyByKey[key]);
+      const safe = Number.isFinite(raw) ? Math.trunc(raw) : 1;
+      return Math.max(1, Math.min(max, safe || 1));
+    };
+
+  const getCardQtyInputValue = (p) => {
     const key = getProductKey(p);
-    const raw = Number(cardQtyByKey[key]);
-    const safe = Number.isFinite(raw) ? Math.trunc(raw) : 1;
-    return Math.max(1, Math.min(max, safe || 1));
+    const raw = cardQtyByKey[key];
+    if (raw === '' || raw === null || raw === undefined) return '1';
+    return String(raw);
   };
 
   const getAttributeOptions = (attrName, values, product) => {
@@ -2004,13 +2011,22 @@ export default function Productos() {
                             type="number"
                             min={1}
                             max={qtyMax}
-                            value={getCardQty(p, qtyMax)}
+                            value={getCardQtyInputValue(p)}
                             size="sm"
                             className="product-qty-input"
                             disabled={!isLoggedIn}
                             onChange={(e) => {
-                              const val = Math.max(1, Math.min(qtyMax, Number(e.target.value) || 1));
-                              setCardQtyByKey((prev) => ({ ...prev, [productKey]: val }));
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setCardQtyByKey((prev) => ({ ...prev, [productKey]: '' }));
+                                return;
+                              }
+                              const val = Math.max(1, Math.min(qtyMax, Number(raw) || 1));
+                              setCardQtyByKey((prev) => ({ ...prev, [productKey]: String(val) }));
+                            }}
+                            onBlur={() => {
+                              const qty = getCardQty(p, qtyMax);
+                              setCardQtyByKey((prev) => ({ ...prev, [productKey]: String(qty) }));
                             }}
                             onClick={(e) => e.stopPropagation()}
                             aria-label="Cantidad"
@@ -2269,23 +2285,36 @@ export default function Productos() {
                   <div className="mb-3">
                     <div className="small text-muted mb-1">Cantidad</div>
                     <InputGroup style={{ maxWidth: 170 }}>
-                      <Form.Control
-                        type="number"
-                        min={1}
-                        value={detailQty}
-                        onChange={(e) => setDetailQty(Math.max(1, Number(e.target.value) || 1))}
-                      />
+                        <Form.Control
+                          type="number"
+                          min={1}
+                          value={detailQty}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '') {
+                              setDetailQty('');
+                              return;
+                            }
+                            const next = Math.max(1, Number(raw) || 1);
+                            setDetailQty(String(next));
+                          }}
+                          onBlur={() => {
+                            const safe = Math.max(1, Number(detailQty) || 1);
+                            setDetailQty(String(safe));
+                          }}
+                        />
                     </InputGroup>
                   </div>
 
                   <Button
                     variant="primary"
                     className={isMobile ? 'w-100' : ''}
-                    disabled={!isLoggedIn}
-                    onClick={() => {
-                      addToCart(resolveProductForCart(detailProduct, detailAttrs), detailQty, detailAttrs);
-                    }}
-                  >
+                      disabled={!isLoggedIn}
+                      onClick={() => {
+                       const safeQty = Math.max(1, Number(detailQty) || 1);
+                       addToCart(resolveProductForCart(detailProduct, detailAttrs), safeQty, detailAttrs);
+                      }}
+                    >
                     {!isLoggedIn ? 'Inicia sesion' : 'Agregar al carrito'}
                   </Button>
                 </div>
