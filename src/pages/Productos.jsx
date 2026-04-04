@@ -2001,12 +2001,6 @@ export default function Productos() {
               : `Mostrando ${startIdx}-${endIdx} de ${total}`}
           </div>
 
-          {totalPages > 1 && (
-            <div className="catalog-pagination-top">
-              {renderPagination()}
-            </div>
-          )}
-
           <Row className="g-4">
             {paginated.map((p) => {
               const attrs = getSelectedAttributes(p);

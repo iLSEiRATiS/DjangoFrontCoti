@@ -840,9 +840,6 @@ a{color:var(--link)} a:hover{opacity:.9}
 .catalog-controls{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .catalog-select{ border-radius:.8rem !important; }
 .catalog-results-summary{ color:#6b7280; font-size:.85rem; margin-bottom:12px; }
-.catalog-pagination-top{
-  margin-bottom:1rem;
-}
 .catalog-scroll-shell{
   position:relative;
 }
