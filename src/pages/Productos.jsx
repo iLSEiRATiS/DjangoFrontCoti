@@ -1679,7 +1679,8 @@ export default function Productos() {
   const getCardQtyInputValue = (p) => {
     const key = getProductKey(p);
     const raw = cardQtyByKey[key];
-    if (raw === '' || raw === null || raw === undefined) return '1';
+    if (raw === '') return '';
+    if (raw === null || raw === undefined) return '1';
     return String(raw);
   };
 
