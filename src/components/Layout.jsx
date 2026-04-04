@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Container, Modal } from 'react-bootstrap';
+import { Alert, Button, Container, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
@@ -43,6 +43,11 @@ const Layout = ({ children }) => {
     <div className="d-flex flex-column min-vh-100">
       <Header />
       <Container as="main" className="my-4 flex-grow-1" role="main">
+        {user?.profileCompletionRequired && (
+          <Alert variant="warning" className="mb-4">
+            Tu cuenta tiene datos incompletos. Completá tu nombre y apellido en <strong>Mi cuenta</strong> para mantener tu perfil al día.
+          </Alert>
+        )}
         {children}
       </Container>
       <Footer />

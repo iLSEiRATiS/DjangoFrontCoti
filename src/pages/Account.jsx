@@ -115,7 +115,7 @@ export default function Account() {
   // perfil
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const [avatarFile, setAvatarFile] = useState(null);
 
   // dirección de envío
@@ -191,7 +191,12 @@ export default function Account() {
         const u = data?.user || user;
         if (!u) return;
         if (alive) {
-          setForm({ name: u.name || '', email: u.email || '', phone: u.profile?.phone || '' });
+          setForm({
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            email: u.email || '',
+            phone: u.profile?.phone || '',
+          });
           setShip({
             name: u.shipping?.name || '',
             address: u.shipping?.address || '',
@@ -239,14 +244,20 @@ export default function Account() {
       let updated;
       if (avatarFile) {
         const fd = new FormData();
-        fd.append('name', form.name);
+        fd.append('firstName', form.firstName);
+        fd.append('lastName', form.lastName);
         fd.append('email', form.email);
         if ((form.phone || '').trim()) fd.append('profilePhone', form.phone);
         fd.append('avatar', avatarFile);
         const res = await api.account.updateProfile(token, fd);
         updated = res.user;
       } else {
-        const res = await api.account.updateProfile(token, { name: form.name, email: form.email, profile: { phone: form.phone } });
+        const res = await api.account.updateProfile(token, {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          profile: { phone: form.phone },
+        });
         updated = res.user;
       }
       if (updated) login({ token, user: { ...user, ...updated } });
@@ -379,6 +390,11 @@ export default function Account() {
         <Card.Header><strong>Mi cuenta</strong></Card.Header>
         <Card.Body>
           {err && <Alert variant="danger" className="mb-3">{err}</Alert>}
+          {user?.profileCompletionRequired && (
+            <Alert variant="warning" className="mb-3">
+              Para mantener tu cuenta actualizada, completá tu nombre y apellido en la pestaña de perfil.
+            </Alert>
+          )}
           {loading ? (
             <div className="text-center py-5"><Spinner animation="border" /></div>
           ) : (
@@ -412,7 +428,11 @@ export default function Account() {
                     </Col>
                     <Col md>
                       <Form.Label>Nombre</Form.Label>
-                      <Form.Control value={form.name} onChange={e=>setForm(v=>({...v, name:e.target.value}))} required />
+                      <Form.Control value={form.firstName} onChange={e=>setForm(v=>({...v, firstName:e.target.value}))} required />
+                    </Col>
+                    <Col md>
+                      <Form.Label>Apellido</Form.Label>
+                      <Form.Control value={form.lastName} onChange={e=>setForm(v=>({...v, lastName:e.target.value}))} required />
                     </Col>
                     <Col md>
                       <Form.Label>Email</Form.Label>

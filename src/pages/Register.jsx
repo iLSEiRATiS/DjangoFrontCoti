@@ -19,7 +19,8 @@ const getSafeRedirect = (search, origin) => {
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -40,7 +41,7 @@ export default function Register() {
     setNotice('');
     try {
       setLoading(true);
-      const data = await api.auth.register({ name, email, password });
+      const data = await api.auth.register({ firstName, lastName, email, password });
       if (data?.token && data?.user) {
         login({ token: data.token, user: data.user });
         navigate(redirect, { replace: true });
@@ -48,7 +49,8 @@ export default function Register() {
       }
       if (data?.pending) {
         setNotice(data?.detail || 'Cuenta creada. Espera aprobacion del administrador.');
-        setName('');
+        setFirstName('');
+        setLastName('');
         setEmail('');
         setPassword('');
         return;
@@ -69,9 +71,13 @@ export default function Register() {
           {err && <Alert variant="danger">{err}</Alert>}
           {notice && <Alert variant="info">{notice}</Alert>}
           <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3" controlId="name">
+            <Form.Group className="mb-3" controlId="firstName">
               <Form.Label>Nombre</Form.Label>
-              <Form.Control value={name} onChange={(e) => setName(e.target.value)} required />
+              <Form.Control value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="lastName">
+              <Form.Label>Apellido</Form.Label>
+              <Form.Control value={lastName} onChange={(e) => setLastName(e.target.value)} required />
             </Form.Group>
             <Form.Group className="mb-3" controlId="email">
               <Form.Label>Email</Form.Label>

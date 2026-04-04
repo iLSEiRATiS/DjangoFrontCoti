@@ -71,7 +71,7 @@ export default function Admin() {
   const [uErr, setUErr] = useState('');
   const [users, setUsers] = useState([]);
   const [userQ, setUserQ] = useState('');
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '' });
+  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '' });
 
   // orders
   const [oLoading, setOLoading] = useState(true);
@@ -278,7 +278,7 @@ export default function Admin() {
     try {
       const created = await api.admin.createUser(token, newUser);
       setUsers(prev => [created, ...prev]);
-      setNewUser({ name: '', email: '', password: '' });
+      setNewUser({ firstName: '', lastName: '', email: '', password: '' });
     } catch (e) {
       if (handleAuthError(e)) return;
       window.alert(e?.message || 'No se pudo crear el usuario.');
@@ -505,7 +505,11 @@ export default function Admin() {
         <Row className="g-2 align-items-end">
           <Col md>
             <Form.Label>Nombre</Form.Label>
-            <Form.Control value={newUser.name} onChange={e=>setNewUser(v=>({...v, name:e.target.value}))} required />
+            <Form.Control value={newUser.firstName} onChange={e=>setNewUser(v=>({...v, firstName:e.target.value}))} required />
+          </Col>
+          <Col md>
+            <Form.Label>Apellido</Form.Label>
+            <Form.Control value={newUser.lastName} onChange={e=>setNewUser(v=>({...v, lastName:e.target.value}))} required />
           </Col>
           <Col md>
             <Form.Label>Email</Form.Label>
