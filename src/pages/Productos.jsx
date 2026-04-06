@@ -942,7 +942,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
           onClick={() => setCategoriesOpen((prev) => !prev)}
           aria-expanded={categoriesOpen}
         >
-          <span className="small text-muted fw-semibold">Categorías</span>
+          <span className="small text-muted fw-bold">CATEGORÍAS</span>
           <span className="catalog-categories-toggle-icon" aria-hidden="true">
             {categoriesOpen ? '−' : '+'}
           </span>
