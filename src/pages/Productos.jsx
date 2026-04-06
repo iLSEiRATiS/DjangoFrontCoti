@@ -950,10 +950,28 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
 
         {categoriesOpen ? (
         <div className="accordion accordion-flush mt-2" id={isMobile ? "accMobile" : "accDesktop"}>
+          <button
+            type="button"
+            className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center rounded-2 mb-2 ${
+              !value.category && !value.subcategory ? "active" : ""
+            }`}
+            onClick={() => {
+              onChange((prev) => ({
+                ...prev,
+                category: '',
+                subcategory: '',
+              }));
+            }}
+          >
+            <span className="fw-semibold">Ver todo</span>
+          </button>
+
           {categories.map((cat, idx) => {
             const collapseId = `${isMobile ? "m" : "d"}-collapse-${idx}`;
             const headerId = `${isMobile ? "m" : "d"}-head-${idx}`;
             const open = isActiveCat(cat);
+            const subcategories = Array.isArray(tree[cat]) ? tree[cat] : [];
+            const hasSubcategories = subcategories.length > 0;
 
             return (
               <div className="accordion-item" key={cat}>
@@ -979,23 +997,25 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                 >
                   <div className="accordion-body py-2">
                     <div className="list-group list-group-flush">
-                      <button
-                        type="button"
-                        className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                          value.category === cat && value.subcategory === "" ? "active" : ""
-                        }`}
-                        onClick={() => {
-                          onChange((prev) => ({
-                            ...prev,
-                            category: cat,
-                            subcategory: '',
-                          }));
-                        }}
-                      >
-                        <span>Ver todo</span>
-                      </button>
+                      {hasSubcategories ? (
+                        <button
+                          type="button"
+                          className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                            value.category === cat && value.subcategory === "" ? "active" : ""
+                          }`}
+                          onClick={() => {
+                            onChange((prev) => ({
+                              ...prev,
+                              category: cat,
+                              subcategory: '',
+                            }));
+                          }}
+                        >
+                          <span>Ver todo</span>
+                        </button>
+                      ) : null}
 
-                      {tree[cat].map((subNode, subIdx) => {
+                      {subcategories.map((subNode, subIdx) => {
                         const sub = subNode.label;
                         const key = `${cat}::${sub}`;
                         const hasChildren = Array.isArray(subNode.children) && subNode.children.length > 0;
@@ -1342,19 +1362,11 @@ export default function Productos() {
             stock: Number(p.stock ?? 0),
           };
         });
-        const mergedMapped = mergeSpecificUnitAndDozenProducts(
-          fixSpecificGloboDuplicate(mergeSpecialColorProducts(mapped))
+        const cleanedMapped = mapped.filter(
+          (p) => p.activo && !shouldHideKnownBadGloboVariant(p.nombre)
         );
-        const cleanedMapped = dedupeSpecificGloboX1(mergedMapped);
         if (!alive || requestId !== remoteRequestRef.current) return;
-        setRemote(
-          cleanedMapped.filter(
-            (p) =>
-              p.activo &&
-              !shouldHideKnownBadGloboVariant(p.nombre) &&
-              !shouldHideUnitDozenVariant(p)
-          )
-        );
+        setRemote(cleanedMapped);
         setTotalRemote(Number(data?.total) || cleanedMapped.length || 0);
         setPagesRemote(
           Number(data?.pages) || Math.max(1, Math.ceil((Number(data?.total) || cleanedMapped.length || 0) / per))
@@ -1386,8 +1398,12 @@ export default function Productos() {
   const usingFallback = !!err;
   const baseListRaw = usingFallback ? localFiltered : remote;
   const baseList = useMemo(
-    () => mergeSpecificUnitAndDozenProducts(dedupeSpecificGloboX1(baseListRaw)).filter((p) => !shouldHideUnitDozenVariant(p)),
-    [baseListRaw]
+    () => (
+      usingFallback
+        ? mergeSpecificUnitAndDozenProducts(dedupeSpecificGloboX1(baseListRaw)).filter((p) => !shouldHideUnitDozenVariant(p))
+        : baseListRaw
+    ),
+    [baseListRaw, usingFallback]
   );
   const appliedFilters = { q: searchDebounced, category: cat, subcategory: subcat };
   const filteredByFacets = usingFallback
