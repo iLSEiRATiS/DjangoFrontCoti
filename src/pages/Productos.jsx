@@ -984,7 +984,13 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                         className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
                           value.category === cat && value.subcategory === "" ? "active" : ""
                         }`}
-                        onClick={() => setCategory(cat)}
+                        onClick={() => {
+                          onChange((prev) => ({
+                            ...prev,
+                            category: cat,
+                            subcategory: '',
+                          }));
+                        }}
                       >
                         <span>Ver todo</span>
                       </button>
