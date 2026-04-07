@@ -15,7 +15,7 @@ const heroImages = [velasImg, decoImg, luminososImg];
 /** Mosaico principal de categorías (enlaza a /productos con filtros) */
 const tiles = [
   { key: 'tile-cotillon-velas', title: 'Cotillon / Velas', to: '/productos?cat=cotillon&subcat=velas', img: '' },
-  { key: 'tile-globos-pinatas', title: 'Globos y Pinatas', to: '/productos?cat=globos-y-pinatas', img: '' },
+  { key: 'tile-globos-pinatas', title: 'Globos y Pinatas', to: '/productos?cat=globos-y-pinatas', img: '', searchFallback: 'globo' },
   { key: 'tile-guirnaldas-led', title: 'Guirnaldas LED', to: '/productos?cat=decoracion-led', img: '' },
   { key: 'tile-disfraces', title: 'Disfraces', to: '/productos?cat=disfraces', img: '' },
   { key: 'tile-descartables', title: 'Descartables', to: '/productos?cat=descartables', img: '' },
@@ -23,12 +23,12 @@ const tiles = [
 ];
 
 const heroOverrideKeys = ['hero-1', 'hero-2', 'hero-3'];
-const TILE_POOL_CACHE_KEY = 'home_tile_image_pools_v1';
-const FEATURED_POOL_CACHE_KEY = 'home_featured_image_pools_v1';
+const TILE_POOL_CACHE_KEY = 'home_tile_image_pools_v2';
+const FEATURED_POOL_CACHE_KEY = 'home_featured_image_pools_v2';
 
 /** Tiras adicionales de colecciones destacadas */
 const featured = [
-  { key: 'featured-numeros-metalizados', title: 'Numeros metalizados', to: '/productos?cat=globos-y-pinatas&subcat=numero-metalizados', img: '' },
+  { key: 'featured-numeros-metalizados', title: 'Numeros metalizados', to: '/productos?cat=globos-y-pinatas&subcat=numero-metalizados', img: '', searchFallback: 'metalizado' },
   { key: 'featured-set-de-globos', title: 'Set de globos', to: '/productos?cat=globos-y-pinatas&subcat=set-de-globos', img: '' },
   { key: 'featured-platos-bandejas', title: 'Platos y bandejas', to: '/productos?cat=descartables&subcat=platos', img: '' },
   { key: 'featured-maquillaje', title: 'Maquillaje', to: '/productos?cat=disfraces&subcat=maquillaje', img: '' },
@@ -64,6 +64,50 @@ const fetchProductsForHomeSlot = async ({ category = '', search = '' }) => {
     limit: 80,
   });
   return Array.isArray(fallback?.items) ? fallback.items : [];
+};
+
+const extractProductImages = (items = []) => {
+  const images = [];
+  const seen = new Set();
+  for (const p of items) {
+    const candidateList = [
+      ...(Array.isArray(p.images) ? p.images : []),
+      p.imageUrl,
+      p.image_url,
+      p.imagen,
+    ];
+    for (const c of candidateList) {
+      const url = normalizeImageUrl(c);
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      images.push(url);
+      if (images.length >= 16) return images;
+    }
+  }
+  return images;
+};
+
+const fetchImagePoolForHomeItem = async (item) => {
+  const params = getTileQuery(item.to);
+  const category = params.get('cat') || '';
+  const subcategory = params.get('subcat') || '';
+  const searchFallback = item.searchFallback || '';
+  const attempts = [
+    { category, search: subcategory },
+    { category, search: searchFallback },
+    { category, search: '' },
+    { category: '', search: searchFallback },
+  ].filter((attempt, index, arr) => {
+    if (!attempt.category && !attempt.search) return false;
+    return arr.findIndex((x) => x.category === attempt.category && x.search === attempt.search) === index;
+  });
+
+  for (const attempt of attempts) {
+    const items = await fetchProductsForHomeSlot(attempt);
+    const images = extractProductImages(items);
+    if (images.length) return images;
+  }
+  return [];
 };
 
 const Home = () => {
@@ -132,28 +176,7 @@ const Home = () => {
       try {
         const entries = await Promise.all(
           featured.map(async (item) => {
-            const params = getTileQuery(item.to);
-            const category = params.get('cat') || '';
-            const search = params.get('subcat') || '';
-            const items = await fetchProductsForHomeSlot({ category, search });
-            const images = [];
-            const seen = new Set();
-            for (const p of items) {
-              const candidateList = [
-                ...(Array.isArray(p.images) ? p.images : []),
-                p.imageUrl,
-                p.image_url,
-                p.imagen,
-              ];
-              for (const c of candidateList) {
-                const url = normalizeImageUrl(c);
-                if (!url || seen.has(url)) continue;
-                seen.add(url);
-                images.push(url);
-                if (images.length >= 16) break;
-              }
-              if (images.length >= 16) break;
-            }
+            const images = await fetchImagePoolForHomeItem(item);
             return [item.key, images];
           })
         );
@@ -178,28 +201,7 @@ const Home = () => {
       try {
         const entries = await Promise.all(
           tiles.map(async (tile) => {
-            const params = getTileQuery(tile.to);
-            const category = params.get('cat') || '';
-            const search = params.get('subcat') || '';
-            const items = await fetchProductsForHomeSlot({ category, search });
-            const images = [];
-            const seen = new Set();
-            for (const p of items) {
-              const candidateList = [
-                ...(Array.isArray(p.images) ? p.images : []),
-                p.imageUrl,
-                p.image_url,
-                p.imagen,
-              ];
-              for (const c of candidateList) {
-                const url = normalizeImageUrl(c);
-                if (!url || seen.has(url)) continue;
-                seen.add(url);
-                images.push(url);
-                if (images.length >= 16) break;
-              }
-              if (images.length >= 16) break;
-            }
+            const images = await fetchImagePoolForHomeItem(tile);
             return [tile.key, images];
           })
         );
