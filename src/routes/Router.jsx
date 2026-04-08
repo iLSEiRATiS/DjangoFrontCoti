@@ -19,13 +19,7 @@ const Orders = lazy(() => import('../pages/Orders'));     // NUEVO
 const Checkout = lazy(() => import('../pages/Checkout')); // NUEVO
 const Terms = lazy(() => import('../pages/Terms'));
 const Privacy = lazy(() => import('../pages/Privacy'));
-
-const NotFound = () => (
-  <div className="text-center my-5" role="alert">
-    <h2>Página no encontrada</h2>
-    <p>Verificá la URL o volvé al inicio.</p>
-  </div>
-);
+const NotFound = lazy(() => import('../pages/NotFound'));
 
 const AppRouter = () => (
   <BrowserRouter>
