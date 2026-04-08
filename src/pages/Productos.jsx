@@ -1174,11 +1174,21 @@ export default function Productos() {
   const lastDebouncedRef = useRef(searchDebounced);
   const searchDebounceRef = useRef(null);
   const remoteRequestRef = useRef(0);
+  const hasMountedPageScrollRef = useRef(false);
 
   const initialPer = Number(qs.get('per') || 12);
   const initialPage = Number(qs.get('page') || 1);
   const [per, setPer] = useState([12, 24, 48].includes(initialPer) ? initialPer : 12);
   const [page, setPage] = useState(initialPage > 0 ? initialPage : 1);
+
+  useEffect(() => {
+    if (location.state?.scrollToTop || !location.search) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      if (resultsScrollRef.current) {
+        resultsScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+    }
+  }, []);
 
   // Sincroniza filtros con la URL
   useEffect(() => {
@@ -1663,6 +1673,10 @@ export default function Productos() {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
   useEffect(() => {
+    if (!hasMountedPageScrollRef.current) {
+      hasMountedPageScrollRef.current = true;
+      return;
+    }
     if (resultsScrollRef.current) {
       resultsScrollRef.current.scrollTo({ top: 0, behavior: 'auto' });
     }

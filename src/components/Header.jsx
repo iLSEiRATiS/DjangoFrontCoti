@@ -124,7 +124,7 @@ const Header = () => {
   const goToProductsTop = (event) => {
     event?.preventDefault();
     setShowMobileMenu(false);
-    navigate('/productos');
+    navigate('/productos', { state: { scrollToTop: true } });
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     });
