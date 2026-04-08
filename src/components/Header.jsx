@@ -121,6 +121,15 @@ const Header = () => {
     setSuggestionsOpen(false);
   };
 
+  const goToProductsTop = (event) => {
+    event?.preventDefault();
+    setShowMobileMenu(false);
+    navigate('/productos');
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+  };
+
   const openProductFromSuggestion = (product) => {
     const productId = product?.id || product?._id || product?.slug;
     if (!productId) {
@@ -191,7 +200,7 @@ const Header = () => {
             </Navbar.Brand>
             <Nav className="align-items-center gap-3 desktop-main-nav">
               <Nav.Link as={Link} to="/" className="nav-link-plain">Inicio</Nav.Link>
-              <Nav.Link as={Link} to="/productos" className="nav-link-plain">Productos</Nav.Link>
+              <Nav.Link as={Link} to="/productos" onClick={goToProductsTop} className="nav-link-plain">Productos</Nav.Link>
               <Button type="button" className="header-contact-btn" onClick={() => setShowContactModal(true)}>Contacto</Button>
               {user?.role === 'admin' && (
                 <Nav.Link as={Link} to="/admin" className="nav-link-plain">Admin</Nav.Link>
@@ -327,7 +336,7 @@ const Header = () => {
             >
               Contacto
             </ListGroup.Item>
-            <ListGroup.Item action as={Link} to="/productos" onClick={() => setShowMobileMenu(false)}>
+            <ListGroup.Item action as={Link} to="/productos" onClick={goToProductsTop}>
               Tienda
             </ListGroup.Item>
 
