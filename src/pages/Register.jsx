@@ -21,6 +21,7 @@ export default function Register() {
   const location = useLocation();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [documentNumber, setDocumentNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -41,7 +42,7 @@ export default function Register() {
     setNotice('');
     try {
       setLoading(true);
-      const data = await api.auth.register({ firstName, lastName, email, password });
+      const data = await api.auth.register({ firstName, lastName, documentNumber, email, password });
       if (data?.token && data?.user) {
         login({ token: data.token, user: data.user });
         navigate(redirect, { replace: true });
@@ -51,6 +52,7 @@ export default function Register() {
         setNotice(data?.detail || 'Cuenta creada. Espera aprobacion del administrador.');
         setFirstName('');
         setLastName('');
+        setDocumentNumber('');
         setEmail('');
         setPassword('');
         return;
@@ -78,6 +80,10 @@ export default function Register() {
             <Form.Group className="mb-3" controlId="lastName">
               <Form.Label>Apellido</Form.Label>
               <Form.Control value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="documentNumber">
+              <Form.Label>DNI/CUIL</Form.Label>
+              <Form.Control value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} required />
             </Form.Group>
             <Form.Group className="mb-3" controlId="email">
               <Form.Label>Email</Form.Label>

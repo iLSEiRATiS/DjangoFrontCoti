@@ -115,7 +115,7 @@ export default function Account() {
   // perfil
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', documentNumber: '', email: '', phone: '' });
   const [avatarFile, setAvatarFile] = useState(null);
   const [shippingQuote, setShippingQuote] = useState({ amount: null, note: '', updatedAt: null, available: false });
 
@@ -196,6 +196,7 @@ export default function Account() {
           setForm({
             firstName: u.firstName || '',
             lastName: u.lastName || '',
+            documentNumber: u.documentNumber || u.profile?.documentNumber || '',
             email: u.email || '',
             phone: u.profile?.phone || '',
           });
@@ -248,6 +249,7 @@ export default function Account() {
         const fd = new FormData();
         fd.append('firstName', form.firstName);
         fd.append('lastName', form.lastName);
+        fd.append('documentNumber', form.documentNumber || '');
         fd.append('email', form.email);
         if ((form.phone || '').trim()) fd.append('profilePhone', form.phone);
         fd.append('avatar', avatarFile);
@@ -257,6 +259,7 @@ export default function Account() {
         const res = await api.account.updateProfile(token, {
           firstName: form.firstName,
           lastName: form.lastName,
+          documentNumber: form.documentNumber || '',
           email: form.email,
           profile: { phone: form.phone },
         });
@@ -404,7 +407,7 @@ export default function Account() {
           {err && <Alert variant="danger" className="mb-3">{err}</Alert>}
           {user?.profileCompletionRequired && (
             <Alert variant="warning" className="mb-3">
-              Para mantener tu cuenta actualizada, completá tu nombre y apellido en la pestaña de perfil.
+              Para mantener tu cuenta actualizada, completá tu nombre, apellido y DNI/CUIL en la pestaña de perfil.
             </Alert>
           )}
           {loading ? (
@@ -446,6 +449,12 @@ export default function Account() {
                       <Form.Label>Apellido</Form.Label>
                       <Form.Control value={form.lastName} onChange={e=>setForm(v=>({...v, lastName:e.target.value}))} required />
                     </Col>
+                    <Col md>
+                      <Form.Label>DNI/CUIL</Form.Label>
+                      <Form.Control value={form.documentNumber} onChange={e=>setForm(v=>({...v, documentNumber:e.target.value}))} required />
+                    </Col>
+                  </Row>
+                  <Row className="g-3 mt-1">
                     <Col md>
                       <Form.Label>Email</Form.Label>
                       <Form.Control type="email" value={form.email} onChange={e=>setForm(v=>({...v, email:e.target.value}))} required />

@@ -85,6 +85,12 @@ export default function Admin() {
   const [editItems, setEditItems] = useState([]);
   const [editStatus, setEditStatus] = useState('');
 
+  // labels (rótulos)
+  const [labelOrder, setLabelOrder] = useState(null);
+  const [labelSize, setLabelSize] = useState('thermal');
+  const [labelBultos, setLabelBultos] = useState(1);
+  const [labelDownloading, setLabelDownloading] = useState(false);
+
   // products
   const [pLoading, setPLoading] = useState(true);
   const [pErr, setPErr] = useState('');
@@ -357,6 +363,50 @@ export default function Admin() {
     }
   };
 
+  const openLabelModal = (order) => {
+    setLabelOrder(order);
+    setLabelSize('thermal');
+    setLabelBultos(1);
+    setLabelDownloading(false);
+  };
+
+  const closeLabelModal = () => {
+    setLabelOrder(null);
+    setLabelDownloading(false);
+  };
+
+  const downloadOrderLabels = async () => {
+    if (!labelOrder) return;
+    const orderId = labelOrder._id;
+    setLabelDownloading(true);
+    try {
+      const params = new URLSearchParams({ size: labelSize, bultos: String(labelBultos) });
+      const res = await fetch(
+        `${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}/labels?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rotulo-pedido-${orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      closeLabelModal();
+    } catch (e) {
+      if (e?.message === 'Error 401' || e?.message === 'Error 403') {
+        handleAuthError({ isAuthError: true });
+        return;
+      }
+      window.alert(e?.message || 'No se pudieron generar los rótulos.');
+    } finally {
+      setLabelDownloading(false);
+    }
+  };
+
   const openEditOrder = (order) => {
     setEditOrder(order);
     setEditStatus(order.status);
@@ -501,6 +551,7 @@ export default function Admin() {
                   <Button size="sm" variant="outline-danger" onClick={() => handleOrderAction(o, 'cancelled')}>Cancelar</Button>
                   <Button size="sm" variant="outline-secondary" onClick={() => openEditOrder(o)}>Ver / Editar</Button>
                   <Button size="sm" variant="outline-dark" onClick={() => downloadOrderPdf(o._id)}>PDF</Button>
+                  <Button size="sm" variant="outline-info" onClick={() => openLabelModal(o)}>Rótulos</Button>
                 </td>
               </tr>
             ))}
@@ -1112,6 +1163,50 @@ export default function Admin() {
           <Button variant="outline-secondary" onClick={closeShippingEditor}>Cancelar</Button>
           <Button variant="primary" onClick={saveShippingQuote} disabled={savingShipping}>
             {savingShipping ? 'Guardando...' : 'Guardar envío'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={!!labelOrder} onHide={closeLabelModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Imprimir Rótulos — Pedido #{labelOrder?._id}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-semibold">Tamaño de etiqueta</Form.Label>
+            <Form.Select value={labelSize} onChange={(e) => setLabelSize(e.target.value)}>
+              <option value="thermal">Térmica 100×150mm (Zebra, Phomemo, HPRT, Munbyn)</option>
+              <option value="courier">Correo / Andreani 100×190mm</option>
+              <option value="a4">Casera A4 (4 etiquetas por hoja)</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-semibold">Cantidad de bultos</Form.Label>
+            <Form.Control
+              type="number"
+              min={1}
+              max={99}
+              value={labelBultos}
+              onChange={(e) => setLabelBultos(Math.max(1, Math.min(99, Number(e.target.value) || 1)))}
+            />
+            <Form.Text className="text-muted">
+              Cada bulto genera una etiqueta indicando "Bulto X de N".
+            </Form.Text>
+          </Form.Group>
+          {labelOrder && (
+            <div className="border rounded p-2 bg-light small">
+              <div className="fw-semibold mb-1">Destino del envío</div>
+              <div>{labelOrder.shipping?.name || labelOrder.user?.name || '-'}</div>
+              <div>{labelOrder.shipping?.address || '-'}</div>
+              <div>{labelOrder.shipping?.city || '-'} {labelOrder.shipping?.zip ? `(CP ${labelOrder.shipping.zip})` : ''}</div>
+              <div>{labelOrder.shipping?.phone || '-'}</div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={closeLabelModal}>Cancelar</Button>
+          <Button variant="primary" onClick={downloadOrderLabels} disabled={labelDownloading}>
+            {labelDownloading ? 'Generando...' : `Generar ${labelBultos} rótulo${labelBultos > 1 ? 's' : ''}`}
           </Button>
         </Modal.Footer>
       </Modal>
