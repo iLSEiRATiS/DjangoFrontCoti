@@ -7,7 +7,7 @@ export function getSiteUrl() {
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
     return window.location.origin.replace(/\/+$/, '');
   }
-  return 'http://localhost:5173';
+  return 'https://www.cotistore.com.ar';
 }
 
 export function toAbsoluteUrl(pathOrUrl = '') {
