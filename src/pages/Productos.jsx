@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Container, Row, Col, Button, Dropdown, Badge, Pagination, Form, Spinner, InputGroup, Modal
 } from 'react-bootstrap';
@@ -421,6 +421,7 @@ const SORTERS = {
 
 const TOP_CATEGORY_ORDER = [
   'Cotillon',
+  'Velas',
   'Globos y Piñatas',
   'Guirnaldas y Decoración',
   'Decoracion para Tortas',
@@ -442,7 +443,6 @@ const TOP_CATEGORY_ORDER = [
 ];
 
 const COTILLON_ORDER = [
-  'Velas',
   'Vinchas y Coronas',
   'Gorros y Sombreros',
   'Antifaces',
@@ -624,7 +624,7 @@ function buildCategoryIndex(categories = []) {
   return { getPath };
 }
 
-function findCategoryIdForSelection(categories = [], catLabel, subLabel) {
+function findCategoryIdForSelection(categories = [], catLabel, subLabel, leafLabel) {
   const byId = new Map();
   const byName = new Map();
   const bySlug = new Map();
@@ -655,13 +655,6 @@ function findCategoryIdForSelection(categories = [], catLabel, subLabel) {
     return path;
   };
 
-  const hasAncestorNamed = (id, ancestorName) => {
-    if (!ancestorName) return false;
-    const normalizedAncestor = norm(ancestorName);
-    const path = getPath(id).map((x) => norm(x));
-    return path.includes(normalizedAncestor);
-  };
-
   const candidateCandidates = (value) => {
     if (!value) return [];
     const normalized = norm(value);
@@ -688,25 +681,31 @@ function findCategoryIdForSelection(categories = [], catLabel, subLabel) {
     return out;
   };
 
-  const bestMatchInCandidates = (candidates = [], wantParent) => {
+  const bestMatchInCandidates = (candidates = [], wantedChain = []) => {
     if (!candidates.length) return null;
-    const normalizedParent = norm(wantParent);
-    if (!normalizedParent) return candidates[0];
-    const withParent = [];
-    const withoutParent = [];
+    const normalizedChain = wantedChain.map((item) => norm(item)).filter(Boolean);
+    if (!normalizedChain.length) return candidates[0];
+    let bestId = candidates[0];
+    let bestScore = -1;
     for (const id of candidates) {
-      if (hasAncestorNamed(id, normalizedParent)) {
-        withParent.push(id);
-      } else {
-        withoutParent.push(id);
+      const path = getPath(id).map((x) => norm(x));
+      const score = normalizedChain.reduce((acc, item) => (path.includes(item) ? acc + 1 : acc), 0);
+      if (score > bestScore) {
+        bestScore = score;
+        bestId = id;
       }
     }
-    return withParent[0] || withoutParent[0] || candidates[0];
+    return bestId;
   };
+
+  if (leafLabel) {
+    const candidates = candidateCandidates(leafLabel);
+    return bestMatchInCandidates(candidates, [catLabel, subLabel, leafLabel]);
+  }
 
   if (subLabel) {
     const candidates = candidateCandidates(subLabel);
-    return bestMatchInCandidates(candidates, catLabel);
+    return bestMatchInCandidates(candidates, [catLabel, subLabel]);
   }
 
   if (catLabel) {
@@ -724,6 +723,7 @@ function applyFiltersToProducts(products, filters) {
   const q = norm((filters.q || '').trim());
   const cat = filters.category || '';
   const sub = filters.subcategory || '';
+  const leaf = filters.leafcategory || '';
   return products
     .filter((p) => {
       if (q) {
@@ -756,8 +756,9 @@ function applyFiltersToProducts(products, filters) {
         ? p.categoria_path
         : [p.category || p.categoria || p.subcategoria || p.subcategory];
       if (cat && !matchInPath(path, cat)) return false;
-      if (!sub) return true;
-      return matchInPath(path, sub) || sizeGroupMatch(p, sub);
+      if (sub && !(matchInPath(path, sub) || sizeGroupMatch(p, sub))) return false;
+      if (!leaf) return true;
+      return matchInPath(path, leaf) || sizeGroupMatch(p, leaf);
     });
 }
 
@@ -765,6 +766,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
   const navigate = useNavigate();
   const categories = Object.keys(tree);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [expandedSubgroups, setExpandedSubgroups] = useState({});
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [searchingSuggestions, setSearchingSuggestions] = useState(false);
@@ -880,6 +882,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
       // Toggle: si se toca la categoria activa, se repliega todo.
       category: prev.category === cat ? '' : cat,
       subcategory: '',
+      leafcategory: '',
     }));
   };
 
@@ -889,17 +892,37 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
       category: cat,
       // Toggle: si se vuelve a tocar la misma subcategoria, se repliega.
       subcategory: prev.category === cat && prev.subcategory === sub ? '' : sub,
+      leafcategory: '',
+    }));
+  };
+
+  const setLeafCategory = (cat, sub, leaf) => {
+    onChange((prev) => ({
+      ...prev,
+      category: cat,
+      subcategory: sub,
+      leafcategory:
+        prev.category === cat && prev.subcategory === sub && prev.leafcategory === leaf ? '' : leaf,
     }));
   };
 
   const isActiveCat = (cat) => value.category === cat;
   const isActiveSub = (cat, sub) => value.category === cat && value.subcategory === sub;
+  const isActiveLeaf = (cat, sub, leaf) =>
+    value.category === cat && value.subcategory === sub && value.leafcategory === leaf;
 
   useEffect(() => {
-    if (value?.category || value?.subcategory) {
+    if (value?.category || value?.subcategory || value?.leafcategory) {
       setCategoriesOpen(true);
     }
-  }, [value?.category, value?.subcategory]);
+  }, [value?.category, value?.subcategory, value?.leafcategory]);
+
+  useEffect(() => {
+    if (value?.category && value?.subcategory) {
+      const key = `${value.category}::${value.subcategory}`;
+      setExpandedSubgroups((prev) => ({ ...prev, [key]: true }));
+    }
+  }, [value?.category, value?.subcategory, value?.leafcategory]);
 
   return (
     <div className="card border-0 shadow-sm">
@@ -955,13 +978,14 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
             className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center rounded-2 mb-2 ${
               !value.category && !value.subcategory ? "active" : ""
             }`}
-            onClick={() => {
-              onChange((prev) => ({
-                ...prev,
-                category: '',
-                subcategory: '',
-              }));
-            }}
+              onClick={() => {
+                onChange((prev) => ({
+                  ...prev,
+                  category: '',
+                  subcategory: '',
+                  leafcategory: '',
+                }));
+              }}
           >
             <span className="fw-semibold">Ver todo</span>
           </button>
@@ -979,8 +1003,6 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                   <button
                     className={`accordion-button ${open ? "" : "collapsed"} py-2`}
                     type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target={`#${collapseId}`}
                     aria-expanded={open ? "true" : "false"}
                     aria-controls={collapseId}
                     onClick={() => setCategory(cat)}
@@ -993,7 +1015,6 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                   id={collapseId}
                   className={`accordion-collapse collapse ${open ? "show" : ""}`}
                   aria-labelledby={headerId}
-                  data-bs-parent={`#${isMobile ? "accMobile" : "accDesktop"}`}
                 >
                   <div className="accordion-body py-2">
                     <div className="list-group list-group-flush">
@@ -1008,6 +1029,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                               ...prev,
                               category: cat,
                               subcategory: '',
+                              leafcategory: '',
                             }));
                           }}
                         >
@@ -1021,7 +1043,8 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                         const hasChildren = Array.isArray(subNode.children) && subNode.children.length > 0;
                         const subCollapseId = `${isMobile ? "m" : "d"}-${idx}-sub-${subIdx}`;
                         const subHeaderId = `${isMobile ? "m" : "d"}-${idx}-sub-head-${subIdx}`;
-                        const subOpen = isActiveSub(cat, sub);
+                        const subgroupKey = `${cat}::${sub}`;
+                        const subOpen = expandedSubgroups[subgroupKey] || isActiveSub(cat, sub);
 
                         if (!hasChildren) {
                           return (
@@ -1047,11 +1070,14 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                                 <button
                                   className={`accordion-button ${subOpen ? "" : "collapsed"} py-2`}
                                   type="button"
-                                  data-bs-toggle="collapse"
-                                  data-bs-target={`#${subCollapseId}`}
                                   aria-expanded={subOpen ? "true" : "false"}
                                   aria-controls={subCollapseId}
-                                  onClick={() => setSubcategory(cat, sub)}
+                                  onClick={() =>
+                                    setExpandedSubgroups((prev) => ({
+                                      ...prev,
+                                      [subgroupKey]: !subOpen,
+                                    }))
+                                  }
                                 >
                                   <span className="me-auto">{sub}</span>
                                 </button>
@@ -1070,9 +1096,9 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                                           key={leafKey}
                                           type="button"
                                           className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                                            isActiveSub(cat, leaf) ? "active" : ""
+                                            isActiveLeaf(cat, sub, leaf) ? "active" : ""
                                           }`}
-                                          onClick={() => setSubcategory(cat, leaf)}
+                                          onClick={() => setLeafCategory(cat, sub, leaf)}
                                         >
                                           <span className="text-truncate" style={{ maxWidth: 170 }}>
                                             {leaf}
@@ -1103,6 +1129,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
               <>
                 <span className="badge text-bg-dark me-2">{value.category}</span>
                 {value.subcategory && <span className="badge text-bg-secondary">{value.subcategory}</span>}
+                {value.leafcategory && <span className="badge text-bg-light border">{value.leafcategory}</span>}
               </>
             ) : (
               <span>Ninguna</span>
@@ -1146,6 +1173,7 @@ export default function Productos() {
   const [sortKey, setSortKey] = useState(qs.get('sort') || 'relevancia');
   const [cat, setCat] = useState(qs.get('cat') || '');
   const [subcat, setSubcat] = useState(qs.get('subcat') || '');
+  const [leafcat, setLeafcat] = useState(qs.get('leafcat') || '');
   const [catTree, setCatTree] = useState(null);
   const categoryIndex = useMemo(() => buildCategoryIndex(catTree || []), [catTree]);
   const [offers, setOffers] = useState([]);
@@ -1175,20 +1203,43 @@ export default function Productos() {
   const searchDebounceRef = useRef(null);
   const remoteRequestRef = useRef(0);
   const hasMountedPageScrollRef = useRef(false);
+  const skipInitialResultsScrollRef = useRef(true);
+  const paginationScrollIntentRef = useRef(false);
 
   const initialPer = Number(qs.get('per') || 12);
   const initialPage = Number(qs.get('page') || 1);
   const [per, setPer] = useState([12, 24, 48].includes(initialPer) ? initialPer : 12);
   const [page, setPage] = useState(initialPage > 0 ? initialPage : 1);
 
-  useEffect(() => {
-    if (location.state?.scrollToTop || !location.search) {
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    const scrollToPageTop = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       if (resultsScrollRef.current) {
         resultsScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       }
-    }
-  }, []);
+    };
+
+    skipInitialResultsScrollRef.current = true;
+    scrollToPageTop();
+    const animationFrame = window.requestAnimationFrame(scrollToPageTop);
+    const timeout = window.setTimeout(() => {
+      scrollToPageTop();
+      skipInitialResultsScrollRef.current = false;
+    }, 120);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(timeout);
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = previousScrollRestoration;
+      }
+    };
+  }, [location.pathname]);
 
   // Sincroniza filtros con la URL
   useEffect(() => {
@@ -1197,11 +1248,12 @@ export default function Productos() {
     if (debouncedSearch) params.set('search', debouncedSearch);
     if (cat) params.set('cat', cat);
     if (subcat) params.set('subcat', subcat);
+    if (leafcat) params.set('leafcat', leafcat);
     if (sortKey !== 'relevancia') params.set('sort', sortKey);
     if (per !== 12) params.set('per', String(per));
     if (page !== 1) params.set('page', String(page));
     navigate({ pathname: '/productos', search: params.toString() }, { replace: true });
-  }, [searchDebounced, cat, subcat, sortKey, per, page, navigate]);
+  }, [searchDebounced, cat, subcat, leafcat, sortKey, per, page, navigate]);
 
   // Debounce de b?squeda: evita request en cada key
   useEffect(() => {
@@ -1226,6 +1278,7 @@ export default function Productos() {
     const nextSearch = (qs.get('search') || '').trim();
     const nextCat = qs.get('cat') || '';
     const nextSubcat = qs.get('subcat') || '';
+    const nextLeafcat = qs.get('leafcat') || '';
     const nextSort = qs.get('sort') || 'relevancia';
     const perParam = Number(qs.get('per') || 12);
     const nextPer = [12, 24, 48].includes(perParam) ? perParam : 12;
@@ -1233,12 +1286,13 @@ export default function Productos() {
     const nextPage = pageParam > 0 ? pageParam : 1;
 
     const searchChanged = nextSearch !== lastSearchRef.current;
-    const categoryChanged = nextCat !== cat || nextSubcat !== subcat;
+    const categoryChanged = nextCat !== cat || nextSubcat !== subcat || nextLeafcat !== leafcat;
 
     setSearch(nextSearch);
     setSearchDebounced(nextSearch);
     setCat(nextCat);
     setSubcat(nextSubcat);
+    setLeafcat(nextLeafcat);
     setSortKey(nextSort);
     setPer(nextPer);
     setPage(searchChanged || categoryChanged ? 1 : nextPage);
@@ -1290,7 +1344,7 @@ export default function Productos() {
       setLoading(true);
       try {
         const q = searchDebounced.trim() || undefined;
-        const categoryIdParam = findCategoryIdForSelection(catTree || [], cat, subcat);
+        const categoryIdParam = findCategoryIdForSelection(catTree || [], cat, subcat, leafcat);
         const data = await api.products.list({
           q,
           page,
@@ -1347,8 +1401,12 @@ export default function Productos() {
           }, {});
           const categoryId = categoryObj?.id || p.categoria_id || p.category_id || null;
           const categoryPath = categoryIndex.getPath(categoryId);
-          const categoryName = categoryObj?.nombre || categoryObj?.name || categoryObj?.label || categoryPath[categoryPath.length - 1] || '';
-          const subcategoryName = categoryPath.length > 1 ? categoryPath[categoryPath.length - 2] : (p.subcategory?.name || p.subcategory || p.subcategoria || '');
+          const categoryName = categoryPath[0] || categoryObj?.nombre || categoryObj?.name || categoryObj?.label || '';
+          const subcategoryName =
+            categoryPath.length > 1
+              ? categoryPath[1]
+              : (p.subcategory?.name || p.subcategory || p.subcategoria || '');
+          const subsubcategoryName = categoryPath.length > 2 ? categoryPath[2] : '';
           const activo = (p.active ?? p.activo ?? true) !== false;
           return {
             id: p._id || p.id || p.slug,
@@ -1364,6 +1422,7 @@ export default function Productos() {
             categoria_slug: categoryObj?.slug || (categoryName ? slugify(categoryName) : 'general'),
             subcategoria: subcategoryName,
             subcategoria_slug: '',
+            subsubcategoria: subsubcategoryName,
             categoria_path: categoryPath.length ? categoryPath : (categoryName ? [categoryName] : []),
             activo,
             atributos: attributes,
@@ -1398,12 +1457,12 @@ export default function Productos() {
     return () => {
       alive = false;
     };
-  }, [searchDebounced, page, per, categoryIndex, cat, subcat, filterTick, sortKey, offers.length]);
+  }, [searchDebounced, page, per, categoryIndex, cat, subcat, leafcat, filterTick, sortKey, offers.length]);
 
   // Fallback local (solo si falla backend)
   const localFiltered = useMemo(
-    () => applyFiltersToProducts(productosData, { q: searchDebounced, category: cat, subcategory: subcat }),
-    [searchDebounced, cat, subcat]
+    () => applyFiltersToProducts(productosData, { q: searchDebounced, category: cat, subcategory: subcat, leafcategory: leafcat }),
+    [searchDebounced, cat, subcat, leafcat]
   );
   const usingFallback = !!err;
   const baseListRaw = usingFallback ? localFiltered : remote;
@@ -1415,7 +1474,7 @@ export default function Productos() {
     ),
     [baseListRaw, usingFallback]
   );
-  const appliedFilters = { q: searchDebounced, category: cat, subcategory: subcat };
+  const appliedFilters = { q: searchDebounced, category: cat, subcategory: subcat, leafcategory: leafcat };
   const filteredByFacets = usingFallback
     ? applyFiltersToProducts(baseList, appliedFilters)
     : baseList;
@@ -1446,7 +1505,6 @@ export default function Productos() {
       });
       const obj = {};
       const cotillonOrder = [
-        'Velas',
         'Vinchas y Coronas',
         'Gorros y Sombreros',
         'Antifaces',
@@ -1508,105 +1566,35 @@ export default function Productos() {
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase();
+      const orderExistingNodes = (nodes = [], orderList = []) => {
+        const byLabel = new Map(nodes.map((node) => [normKey(node.label), node]));
+        const ordered = orderList.map((name) => byLabel.get(normKey(name))).filter(Boolean);
+        const remaining = nodes.filter((node) => !ordered.includes(node));
+        return [...ordered, ...remaining];
+      };
       roots.forEach((r) => {
         if (normKey(r.label) === 'cotillon') {
-          const ordered = [];
-          const byLabel = new Map(r.children.map((c) => [normKey(c.label), c]));
-          if (!byLabel.has(normKey('Velas'))) {
-            byLabel.set(normKey('Velas'), { label: 'Velas', children: [] });
-          }
-          cotillonOrder.forEach((name) => {
-            if (!byLabel.has(normKey(name))) {
-              byLabel.set(normKey(name), { label: name, children: [] });
-            }
-          });
-          cotillonOrder.forEach((name) => {
-            const node = byLabel.get(normKey(name));
-            if (node) ordered.push(node);
-          });
-          const remaining = r.children.filter((c) => !ordered.includes(c));
-          r.children = [...ordered, ...remaining];
-          r.children.forEach((c) => {
-            if (normKey(c.label) === 'velas') {
-              const byLabel2 = new Map((c.children || []).map((cc) => [normKey(cc.label), cc]));
-              velasOrder.forEach((name) => {
-                if (!byLabel2.has(normKey(name))) {
-                  byLabel2.set(normKey(name), { label: name, children: [] });
-                }
-              });
-              const orderedVelas = velasOrder.map((name) => byLabel2.get(normKey(name))).filter(Boolean);
-              const restVelas = c.children.filter((cc) => !orderedVelas.includes(cc));
-              c.children = [...orderedVelas, ...restVelas];
-            }
-          });
+          r.children = orderExistingNodes(r.children, cotillonOrder);
+        } else if (normKey(r.label) === 'velas') {
+          r.children = orderExistingNodes(r.children, velasOrder);
         } else if (normKey(r.label) === 'globos y pinatas') {
-          const ordered = [];
-          const byLabel = new Map(r.children.map((c) => [normKey(c.label), c]));
-          globosOrder.forEach((name) => {
-            const node = byLabel.get(normKey(name));
-            if (node) ordered.push(node);
-          });
-          const remaining = r.children.filter((c) => !ordered.includes(c));
-          r.children = [...ordered, ...remaining];
+          r.children = orderExistingNodes(r.children, globosOrder);
           r.children.forEach((c) => {
             if (['9 pulgadas', '10 pulgadas', '12 pulgadas'].includes(normKey(c.label))) {
-              const byLabel2 = new Map(c.children.map((cc) => [normKey(cc.label), cc]));
-              const orderedSizes = sizeOrder.map((name) => byLabel2.get(normKey(name))).filter(Boolean);
-              const restSizes = c.children.filter((cc) => !orderedSizes.includes(cc));
-              c.children = [...orderedSizes, ...restSizes];
+              c.children = orderExistingNodes(c.children, sizeOrder);
             }
           });
         } else if (normKey(r.label) === 'disfraces') {
-          const ordered = [];
-          const byLabel = new Map(r.children.map((c) => [normKey(c.label), c]));
-          disfracesOrder.forEach((name) => {
-            if (!byLabel.has(normKey(name))) {
-              byLabel.set(normKey(name), { label: name, children: [] });
-            }
-          });
-          disfracesOrder.forEach((name) => {
-            const node = byLabel.get(normKey(name));
-            if (node) ordered.push(node);
-          });
-          const remaining = r.children.filter((c) => !ordered.includes(c));
-          r.children = [...ordered, ...remaining];
+          r.children = orderExistingNodes(r.children, disfracesOrder);
         } else if (normKey(r.label) === 'descartables') {
-          const ordered = [];
-          const byLabel = new Map(r.children.map((c) => [normKey(c.label), c]));
-          descartablesOrder.forEach((name) => {
-            if (!byLabel.has(normKey(name))) {
-              byLabel.set(normKey(name), { label: name, children: [] });
-            }
-          });
-          descartablesOrder.forEach((name) => {
-            const node = byLabel.get(normKey(name));
-            if (node) ordered.push(node);
-          });
-          const remaining = r.children.filter((c) => !ordered.includes(c));
-          r.children = [...ordered, ...remaining];
+          r.children = orderExistingNodes(r.children, descartablesOrder);
         } else if (normKey(r.label) === 'reposteria') {
-          const ordered = [];
-          const byLabel = new Map(r.children.map((c) => [normKey(c.label), c]));
-          reposteriaOrder.forEach((name) => {
-            if (!byLabel.has(normKey(name))) {
-              byLabel.set(normKey(name), { label: name, children: [] });
-            }
-          });
-          reposteriaOrder.forEach((name) => {
-            const node = byLabel.get(normKey(name));
-            if (node) ordered.push(node);
-          });
-          const remaining = r.children.filter((c) => !ordered.includes(c));
-          r.children = [...ordered, ...remaining];
+          r.children = orderExistingNodes(r.children, reposteriaOrder);
           r.children.forEach((c) => {
             if (normKey(c.label) === normKey('Decoracion Tortas-Topper')) {
-              const byLabel2 = new Map((c.children || []).map((cc) => [normKey(cc.label), cc]));
-              decoTopperChildren.forEach((name) => {
-                if (!byLabel2.has(normKey(name))) {
-                  byLabel2.set(normKey(name), { label: name, children: [] });
-                }
-              });
-              c.children = decoTopperChildren.map((name) => byLabel2.get(normKey(name))).filter(Boolean);
+              c.children = orderExistingNodes(c.children || [], decoTopperChildren).filter((node) =>
+                decoTopperChildren.some((name) => normKey(name) === normKey(node.label))
+              );
             }
           });
         } else {
@@ -1629,11 +1617,12 @@ export default function Productos() {
     setSearchDebounced((next.q || '').trim());
     setCat(next.category ?? '');
     setSubcat(next.subcategory ?? '');
+    setLeafcat(next.leafcategory ?? '');
     setPage(1);
     setFilterTick((t) => t + 1);
   };
   const clearAll = () => {
-    handleAppliedChange({ q: '', category: '', subcategory: '' });
+    handleAppliedChange({ q: '', category: '', subcategory: '', leafcategory: '' });
   };
   const total = usingFallback ? filteredByFacets.length : totalRemote;
   const totalPages = usingFallback ? Math.max(1, Math.ceil(total / per)) : Math.max(1, pagesRemote || 1);
@@ -1646,7 +1635,8 @@ export default function Productos() {
   const seoTree = Array.isArray(categoryTree) ? categoryTree : [];
   const seoCategoryNode = cat ? findBySlug(seoTree, cat) : null;
   const seoSubcategoryNode = subcat ? findBySlug(seoTree, subcat) : null;
-  const seoCategoryLabel = seoSubcategoryNode?.label || seoCategoryNode?.label || '';
+  const seoLeafNode = leafcat ? findBySlug(seoTree, leafcat) : null;
+  const seoCategoryLabel = seoLeafNode?.label || seoSubcategoryNode?.label || seoCategoryNode?.label || '';
   const seoTitle = seoCategoryLabel
     ? `Catalogo mayorista ${seoCategoryLabel}`
     : 'Catalogo mayorista de cotillon';
@@ -1677,16 +1667,29 @@ export default function Productos() {
       hasMountedPageScrollRef.current = true;
       return;
     }
-    if (resultsScrollRef.current) {
-      resultsScrollRef.current.scrollTo({ top: 0, behavior: 'auto' });
-    }
-    if (gridTopRef.current) {
-      const offset = isMobile ? 88 : 16;
-      const y = gridTopRef.current.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+    if (skipInitialResultsScrollRef.current) {
+      skipInitialResultsScrollRef.current = false;
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      if (resultsScrollRef.current) {
+        resultsScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
       return;
     }
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    if (!paginationScrollIntentRef.current) return;
+    paginationScrollIntentRef.current = false;
+
+    if (resultsScrollRef.current) {
+      resultsScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+
+    if (isMobile && gridTopRef.current) {
+      const header =
+        document.querySelector('.mobile-header:not(.is-hidden)') ||
+        document.querySelector('.header-navbar:not(.is-hidden)');
+      const headerHeight = header?.getBoundingClientRect().height || 72;
+      const y = gridTopRef.current.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+    }
   }, [isMobile, safePage]);
 
   useEffect(() => {
@@ -1711,7 +1714,12 @@ export default function Productos() {
     const items = [];
     const maxButtons = 11; // muestra mas paginas para navegar mejor
     const side = 2; // cuantas a cada lado
-    const go = (p) => setPage(Math.max(1, Math.min(totalPages, p)));
+    const go = (p) => {
+      const nextPage = Math.max(1, Math.min(totalPages, p));
+      if (nextPage === safePage) return;
+      paginationScrollIntentRef.current = true;
+      setPage(nextPage);
+    };
 
     items.push(
       <Pagination.First key="first" disabled={safePage === 1} onClick={() => go(1)} />,
