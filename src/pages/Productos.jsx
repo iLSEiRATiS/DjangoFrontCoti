@@ -1072,12 +1072,24 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                                   type="button"
                                   aria-expanded={subOpen ? "true" : "false"}
                                   aria-controls={subCollapseId}
-                                  onClick={() =>
+                                  onClick={() => {
+                                    onChange((prev) => {
+                                      const isCurrentGroupSelected =
+                                        prev.category === cat &&
+                                        prev.subcategory === sub &&
+                                        !prev.leafcategory;
+                                      return {
+                                        ...prev,
+                                        category: isCurrentGroupSelected ? '' : cat,
+                                        subcategory: isCurrentGroupSelected ? '' : sub,
+                                        leafcategory: '',
+                                      };
+                                    });
                                     setExpandedSubgroups((prev) => ({
                                       ...prev,
-                                      [subgroupKey]: !subOpen,
-                                    }))
-                                  }
+                                      [subgroupKey]: !subOpen || !isActiveSub(cat, sub),
+                                    }));
+                                  }}
                                 >
                                   <span className="me-auto">{sub}</span>
                                 </button>
