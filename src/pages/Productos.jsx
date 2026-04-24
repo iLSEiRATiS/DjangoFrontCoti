@@ -419,81 +419,126 @@ const SORTERS = {
   nombre_desc: { label: 'Nombre: Z-A', fn: (a, b) => b.nombre.localeCompare(a.nombre) }
 };
 
-const TOP_CATEGORY_ORDER = [
-  'Cotillon',
-  'Velas',
-  'Globos y Piñatas',
-  'Guirnaldas y Decoración',
-  'Decoracion para Tortas',
-  'Decoracion Led',
-  'Luminoso',
-  'Libreria',
-  'Disfraces',
-  'Descartables',
-  'Reposteria',
-  'Juguetes',
-  'Miniaturas-Juguetitos',
-  'Fechas Especiales',
-  'Lanzapapelitos',
-  'Papelera',
-  'Articulos con Sonido',
-  'Articulos en telgopor',
-  'Articulos Para Manualidades',
-  'Articulos Para Comunion',
-];
+const CATEGORY_ORDER_RULES = {
+  roots: [
+    'Cotillon',
+    'Velas',
+    'Globos y Piñatas',
+    'Guirnaldas y Decoración',
+    'Decoracion para Tortas',
+    'Decoracion Led',
+    'Luminoso',
+    'Libreria',
+    'Disfraces',
+    'Descartables',
+    'Reposteria',
+    'Juguetes',
+    'Miniaturas-Juguetitos',
+    'Fechas Especiales',
+    'Lanzapapelitos',
+    'Papelera',
+    'Articulos con Sonido',
+    'Articulos en telgopor',
+    'Articulos Para Manualidades',
+    'Articulos Para Comunion',
+  ],
+  childrenByPath: {
+    [slugify('Cotillon')]: [
+      'Vinchas y Coronas',
+      'Gorros y Sombreros',
+      'Antifaces',
+      'Carioca',
+    ],
+    [slugify('Velas')]: [
+      'Velas con Palito',
+      'Velas Importadas',
+      'Bengalas',
+      'Velas con Luz',
+      'Vela Escudo de Futbol',
+      'Velas Estrellita',
+    ],
+    [slugify('Globos y Piñatas')]: [
+      'Numero Metalizados',
+      'Globos con Forma',
+      'Set de Globos',
+      '9 Pulgadas',
+      '10 Pulgadas',
+      '12 Pulgadas',
+      'Globologia',
+      'Piñatas',
+      'Accesorios',
+    ],
+    [slugify('Globos y Piñatas') + '/' + slugify('9 Pulgadas')]: ['Perlado', 'Liso'],
+    [slugify('Globos y Piñatas') + '/' + slugify('10 Pulgadas')]: ['Perlado', 'Liso'],
+    [slugify('Globos y Piñatas') + '/' + slugify('12 Pulgadas')]: ['Perlado', 'Liso'],
+    [slugify('Disfraces')]: [
+      'Extensiones Pelucas y Pintura',
+      'Maquillaje',
+      'Caretas',
+      'Tutus',
+      'Alas',
+    ],
+    [slugify('Descartables')]: [
+      'Bandejas Carton',
+      'Bandejas Plasticas',
+      'Manteles',
+      'Cubiertos',
+      'Platos',
+      'Potes',
+      'Servilletas',
+      'Vasos y Copas',
+      'Blondas',
+    ],
+    [slugify('Reposteria')]: [
+      'Parpen',
+      'Lodiser',
+      'Ballina',
+      'Dewey',
+      'Comestibles',
+      'Placas Plasticas',
+      'Decoracion Tortas-Topper',
+      'Moldes',
+    ],
+    [slugify('Reposteria') + '/' + slugify('Decoracion Tortas-Topper')]: [
+      'Adornos Telgopor',
+    ],
+  },
+};
 
-const COTILLON_ORDER = [
-  'Vinchas y Coronas',
-  'Gorros y Sombreros',
-  'Antifaces',
-  'Carioca',
-];
+const sortNodesAlphabetically = (nodes = []) => {
+  nodes.sort((a, b) => a.label.localeCompare(b.label, 'es'));
+};
 
-const VELAS_ORDER = [
-  'Velas con Palito',
-  'Velas Importadas',
-  'Bengalas',
-  'Velas con Luz',
-  'Vela Escudo de Futbol',
-  'Velas Estrellita',
-];
+const orderNodesWithPreferredLabels = (nodes = [], preferredLabels = []) => {
+  const preferredIndex = new Map(preferredLabels.map((label, index) => [slugify(label), index]));
+  return [...nodes].sort((a, b) => {
+    const aIndex = preferredIndex.has(a.slug) ? preferredIndex.get(a.slug) : Number.MAX_SAFE_INTEGER;
+    const bIndex = preferredIndex.has(b.slug) ? preferredIndex.get(b.slug) : Number.MAX_SAFE_INTEGER;
+    if (aIndex !== bIndex) return aIndex - bIndex;
+    return a.label.localeCompare(b.label, 'es');
+  });
+};
 
-const GLOBOS_ORDER = [
-  'Numero Metalizados',
-  'Globos con Forma',
-  'Set de Globos',
-  '9 Pulgadas',
-  '10 Pulgadas',
-  '12 Pulgadas',
-  'Globologia',
-  'Piñatas',
-  'Accesorios',
-];
+const applyCategoryOrderRules = (nodes = [], parentPath = []) => {
+  if (!Array.isArray(nodes) || !nodes.length) return [];
+  const pathKey = parentPath.join('/');
+  const preferredLabels = CATEGORY_ORDER_RULES.childrenByPath[pathKey] || [];
+  const normalizedNodes = nodes.map((node) => ({
+    ...node,
+    children: applyCategoryOrderRules(node.children || [], [...parentPath, node.slug]),
+  }));
+  const sortedAlphabetically = [...normalizedNodes];
+  sortNodesAlphabetically(sortedAlphabetically);
+  return preferredLabels.length
+    ? orderNodesWithPreferredLabels(sortedAlphabetically, preferredLabels)
+    : sortedAlphabetically;
+};
 
-const SIZE_ORDER = [
-  'Perlado',
-  'Liso',
-];
-
-const DISFRACES_ORDER = [
-  'Extensiones Pelucas y Pintura',
-  'Maquillaje',
-  'Caretas',
-  'Tutus',
-  'Alas',
-];
-
-const DESCARTABLES_ORDER = [
-  'Bandejas Carton',
-  'Bandejas Plasticas',
-  'Manteles',
-  'Cubiertos',
-  'Platos',
-  'Potes',
-  'Servilletas',
-  'Vasos y Copas',
-  'Blondas',
-];
+const orderRootNodes = (nodes = []) => {
+  const sortedAlphabetically = [...nodes];
+  sortNodesAlphabetically(sortedAlphabetically);
+  return orderNodesWithPreferredLabels(sortedAlphabetically, CATEGORY_ORDER_RULES.roots);
+};
 
 function buildTreeFromApi(categories = []) {
   const byId = new Map();
@@ -514,55 +559,11 @@ function buildTreeFromApi(categories = []) {
       roots.push(node);
     }
   });
-  const sortTree = (nodes) => {
-    nodes.sort((a, b) => a.label.localeCompare(b.label, 'es'));
-    nodes.forEach((n) => {
-      if (n.children?.length) sortTree(n.children);
-    });
-  };
-  // Ordena subcategorias alfabeticamente, pero respeta el orden fijo del nivel raiz.
-  sortTree(roots);
-  const orderChildren = (parentSlug, orderList) => {
-    const order = orderList.map((name) => slugify(name));
-    const idx = new Map(order.map((s, i) => [s, i]));
-    return (a, b) => {
-      const ia = idx.has(a.slug) ? idx.get(a.slug) : 9999;
-      const ib = idx.has(b.slug) ? idx.get(b.slug) : 9999;
-      if (ia !== ib) return ia - ib;
-      return a.label.localeCompare(b.label, 'es');
-    };
-  };
-  roots.forEach((r) => {
-    if (r.slug === slugify('Cotillon') && r.children?.length) {
-      r.children.sort(orderChildren(r.slug, COTILLON_ORDER));
-      r.children.forEach((c) => {
-        if (c.slug === slugify('Velas') && c.children?.length) {
-          c.children.sort(orderChildren(c.slug, VELAS_ORDER));
-        }
-      });
-    }
-    if (r.slug === slugify('Globos y Piñatas') && r.children?.length) {
-      r.children.sort(orderChildren(r.slug, GLOBOS_ORDER));
-      r.children.forEach((c) => {
-        if (['9-pulgadas', '10-pulgadas', '12-pulgadas'].includes(c.slug) && c.children?.length) {
-          c.children.sort(orderChildren(c.slug, SIZE_ORDER));
-        }
-      });
-    }
-    if (r.slug === slugify('Disfraces') && r.children?.length) {
-      r.children.sort(orderChildren(r.slug, DISFRACES_ORDER));
-    }
-    if (r.slug === slugify('Descartables') && r.children?.length) {
-      r.children.sort(orderChildren(r.slug, DESCARTABLES_ORDER));
-    }
-  });
-  const orderBySlug = TOP_CATEGORY_ORDER.map((name) => slugify(name));
-  const ordered = orderBySlug
-    .map((slug) => roots.find((r) => r.slug === slug))
-    .filter(Boolean);
-  const orderedSlugs = new Set(ordered.map((r) => r.slug));
-  const rest = roots.filter((r) => !orderedSlugs.has(r.slug));
-  return [...ordered, ...rest];
+  const normalizedRoots = roots.map((root) => ({
+    ...root,
+    children: applyCategoryOrderRules(root.children || [], [root.slug]),
+  }));
+  return orderRootNodes(normalizedRoots);
 }
 
 const findBySlug = (nodes, slug) => {
@@ -591,7 +592,10 @@ function buildCategoryTreeFromProducts(products) {
     map.get(c).add(s);
   }
   const obj = {};
-  Array.from(map.keys()).sort().forEach((c) => {
+  orderNodesWithPreferredLabels(
+    Array.from(map.keys()).map((label) => ({ label, slug: slugify(label) })),
+    CATEGORY_ORDER_RULES.roots,
+  ).forEach(({ label: c }) => {
     obj[c] = Array.from(map.get(c)).sort().map((label) => ({ label, children: [] }));
   });
   return obj;
@@ -1498,121 +1502,8 @@ export default function Productos() {
   }, [filteredByFacets, sortKey, usingFallback]);
   const categoryTree = useMemo(() => {
     if (catTree?.length) {
-      const byId = new Map();
-      catTree.forEach((c) => {
-        const label = c.nombre || c.name || c.label;
-        if (!label) return;
-        byId.set(c.id, { label, children: [] });
-      });
-      const roots = [];
-      byId.forEach((node, id) => {
-        const cat = catTree.find((c) => c.id === id);
-        const parentId = cat?.parent || cat?.parent_id || cat?.parentId;
-        if (parentId) {
-          const parent = byId.get(parentId);
-          if (parent) parent.children.push(node);
-        } else {
-          roots.push(node);
-        }
-      });
+      const roots = buildTreeFromApi(catTree);
       const obj = {};
-      const cotillonOrder = [
-        'Vinchas y Coronas',
-        'Gorros y Sombreros',
-        'Antifaces',
-        'Carioca',
-      ];
-      const velasOrder = [
-        'Velas con Palito',
-        'Velas Importadas',
-        'Bengalas',
-        'Velas con Luz',
-        'Vela Escudo de Futbol',
-        'Velas Estrellita',
-      ];
-      const globosOrder = [
-        'Numero Metalizados',
-        'Globos con Forma',
-        'Set de Globos',
-        '9 Pulgadas',
-        '10 Pulgadas',
-        '12 Pulgadas',
-        'Globologia',
-        'Piñatas',
-        'Accesorios',
-      ];
-      const sizeOrder = ['Perlado', 'Liso'];
-      const disfracesOrder = [
-        'Extensiones Pelucas y Pintura',
-        'Maquillaje',
-        'Caretas',
-        'Tutus',
-        'Alas',
-      ];
-      const descartablesOrder = [
-        'Bandejas Carton',
-        'Bandejas Plasticas',
-        'Manteles',
-        'Cubiertos',
-        'Platos',
-        'Potes',
-        'Servilletas',
-        'Vasos y Copas',
-        'Blondas',
-      ];
-      const reposteriaOrder = [
-        'Parpen',
-        'Lodiser',
-        'Ballina',
-        'Dewey',
-        'Comestibles',
-        'Placas Plasticas',
-        'Decoracion Tortas-Topper',
-        'Moldes',
-      ];
-      const decoTopperChildren = [
-        'Adornos Telgopor',
-      ];
-      const normKey = (v) =>
-        String(v || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase();
-      const orderExistingNodes = (nodes = [], orderList = []) => {
-        const byLabel = new Map(nodes.map((node) => [normKey(node.label), node]));
-        const ordered = orderList.map((name) => byLabel.get(normKey(name))).filter(Boolean);
-        const remaining = nodes.filter((node) => !ordered.includes(node));
-        return [...ordered, ...remaining];
-      };
-      roots.forEach((r) => {
-        if (normKey(r.label) === 'cotillon') {
-          r.children = orderExistingNodes(r.children, cotillonOrder);
-        } else if (normKey(r.label) === 'velas') {
-          r.children = orderExistingNodes(r.children, velasOrder);
-        } else if (normKey(r.label) === 'globos y pinatas') {
-          r.children = orderExistingNodes(r.children, globosOrder);
-          r.children.forEach((c) => {
-            if (['9 pulgadas', '10 pulgadas', '12 pulgadas'].includes(normKey(c.label))) {
-              c.children = orderExistingNodes(c.children, sizeOrder);
-            }
-          });
-        } else if (normKey(r.label) === 'disfraces') {
-          r.children = orderExistingNodes(r.children, disfracesOrder);
-        } else if (normKey(r.label) === 'descartables') {
-          r.children = orderExistingNodes(r.children, descartablesOrder);
-        } else if (normKey(r.label) === 'reposteria') {
-          r.children = orderExistingNodes(r.children, reposteriaOrder);
-          r.children.forEach((c) => {
-            if (normKey(c.label) === normKey('Decoracion Tortas-Topper')) {
-              c.children = orderExistingNodes(c.children || [], decoTopperChildren).filter((node) =>
-                decoTopperChildren.some((name) => normKey(name) === normKey(node.label))
-              );
-            }
-          });
-        } else {
-          r.children.sort((a, b) => a.label.localeCompare(b.label, 'es'));
-        }
-      });
       roots.forEach((r) => {
         obj[r.label] = r.children.map((c) => ({
           label: c.label,

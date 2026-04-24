@@ -25,3 +25,4 @@ VITE_CLOUDINARY_UPLOAD_PRESET=tu_upload_preset
 
 ## Nota
 Si se trabaja en catalogo, filtros, login, carrito o admin SPA, este es el frontend que hay que tocar primero.
+Para deploy coordinado con backend/VPS, tomar como referencia `..\CotiDjangoFinal\backend\docs\vps-deploy-runbook.md`.
