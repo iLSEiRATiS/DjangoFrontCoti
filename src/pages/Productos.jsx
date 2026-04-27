@@ -1,6 +1,6 @@
 ﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  Container, Row, Col, Button, Dropdown, Badge, Pagination, Form, Spinner, InputGroup, Modal
+  Container, Row, Col, Button, Dropdown, Pagination, Form, Spinner, InputGroup, Modal
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -770,7 +770,10 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
   const navigate = useNavigate();
   const categories = Object.keys(tree);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [expandedSubgroups, setExpandedSubgroups] = useState({});
+  const [showMobileCategorySheet, setShowMobileCategorySheet] = useState(false);
+  const [mobileCategoryQuery, setMobileCategoryQuery] = useState('');
+  const [expandedCategoryKey, setExpandedCategoryKey] = useState('');
+  const [expandedSubgroupKey, setExpandedSubgroupKey] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [searchingSuggestions, setSearchingSuggestions] = useState(false);
@@ -915,6 +918,35 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
   const isActiveLeaf = (cat, sub, leaf) =>
     value.category === cat && value.subcategory === sub && value.leafcategory === leaf;
 
+  const closeMobileCategorySheet = () => {
+    if (isMobile) setShowMobileCategorySheet(false);
+  };
+
+  const selectAllCategories = () => {
+    onChange((prev) => ({
+      ...prev,
+      category: '',
+      subcategory: '',
+      leafcategory: '',
+    }));
+    closeMobileCategorySheet();
+  };
+
+  const selectCategoryAndClose = (cat) => {
+    setCategory(cat);
+    closeMobileCategorySheet();
+  };
+
+  const selectSubcategoryAndClose = (cat, sub) => {
+    setSubcategory(cat, sub);
+    closeMobileCategorySheet();
+  };
+
+  const selectLeafAndClose = (cat, sub, leaf) => {
+    setLeafCategory(cat, sub, leaf);
+    closeMobileCategorySheet();
+  };
+
   useEffect(() => {
     if (value?.category || value?.subcategory || value?.leafcategory) {
       setCategoriesOpen(true);
@@ -924,9 +956,190 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
   useEffect(() => {
     if (value?.category && value?.subcategory) {
       const key = `${value.category}::${value.subcategory}`;
-      setExpandedSubgroups((prev) => ({ ...prev, [key]: true }));
+      setExpandedSubgroupKey(key);
     }
   }, [value?.category, value?.subcategory, value?.leafcategory]);
+
+  useEffect(() => {
+    if (value?.category) {
+      setExpandedCategoryKey(value.category);
+    }
+  }, [value?.category]);
+
+  const activeCategoryCount =
+    Number(Boolean(value?.category)) + Number(Boolean(value?.subcategory)) + Number(Boolean(value?.leafcategory));
+
+  const mobileSelectionSummary = value.leafcategory || value.subcategory || value.category;
+  const mobileTriggerSummary = mobileSelectionSummary
+    ? [value.category, value.subcategory, value.leafcategory].filter(Boolean).join(' / ')
+    : 'Abrí el panel para elegir';
+
+  const filteredCategories = useMemo(() => {
+    const query = norm(mobileCategoryQuery);
+    if (!query) return categories;
+    return categories.filter((cat) => {
+      if (norm(cat).includes(query)) return true;
+      return (Array.isArray(tree[cat]) ? tree[cat] : []).some((subNode) => {
+        if (norm(subNode?.label || '').includes(query)) return true;
+        return (Array.isArray(subNode?.children) ? subNode.children : []).some((leaf) => norm(leaf).includes(query));
+      });
+    });
+  }, [categories, mobileCategoryQuery, tree]);
+
+  const renderMobileCategorySheet = () => (
+    <Modal
+      show={showMobileCategorySheet}
+      onHide={closeMobileCategorySheet}
+      className="catalog-categories-sheet"
+      contentClassName="catalog-categories-sheet-content"
+      dialogClassName="catalog-categories-sheet-dialog"
+    >
+      <Modal.Header closeButton>
+        <div>
+          <div className="catalog-categories-sheet-kicker">Filtrar</div>
+          <Modal.Title as="h3">Categorías</Modal.Title>
+        </div>
+      </Modal.Header>
+      <Modal.Body>
+        <div className="catalog-categories-sheet-actions">
+          <button
+            type="button"
+            className={`catalog-sheet-all-btn ${!value.category && !value.subcategory && !value.leafcategory ? 'active' : ''}`}
+            onClick={selectAllCategories}
+          >
+            Ver todo
+          </button>
+          {(value.category || value.subcategory || value.leafcategory) ? (
+            <button type="button" className="catalog-sheet-clear-btn" onClick={selectAllCategories}>
+              Quitar selección
+            </button>
+          ) : null}
+        </div>
+
+        <div className="catalog-sheet-search">
+          <input
+            type="search"
+            className="catalog-sheet-search-input"
+            placeholder="Buscar categoría..."
+            value={mobileCategoryQuery}
+            onChange={(e) => setMobileCategoryQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="catalog-sheet-tree">
+          {filteredCategories.map((cat) => {
+            const subcategories = Array.isArray(tree[cat]) ? tree[cat] : [];
+            const hasSubcategories = subcategories.length > 0;
+            const isExpanded = expandedCategoryKey === cat;
+            const query = norm(mobileCategoryQuery);
+            const visibleSubcategories = !query
+              ? subcategories
+              : subcategories.filter((subNode) => {
+                  if (norm(subNode?.label || '').includes(query)) return true;
+                  return (Array.isArray(subNode?.children) ? subNode.children : []).some((leaf) => norm(leaf).includes(query));
+                });
+
+            return (
+              <div key={`sheet-${cat}`} className="catalog-sheet-group">
+                <div className={`catalog-sheet-row is-parent ${isActiveCat(cat) ? 'is-active' : ''}`}>
+                  <button
+                    type="button"
+                    className="catalog-sheet-select"
+                    onClick={() => selectCategoryAndClose(cat)}
+                  >
+                    <span>{cat}</span>
+                    {isActiveCat(cat) && !value.subcategory ? <span className="catalog-sheet-pill">Activo</span> : null}
+                  </button>
+                  {hasSubcategories ? (
+                    <button
+                      type="button"
+                      className={`catalog-sheet-toggle ${isExpanded ? 'is-open' : ''}`}
+                      onClick={() => {
+                        setExpandedCategoryKey((prev) => (prev === cat ? '' : cat));
+                        setExpandedSubgroupKey('');
+                      }}
+                      aria-label={isExpanded ? `Contraer ${cat}` : `Expandir ${cat}`}
+                    >
+                      <span />
+                    </button>
+                  ) : null}
+                </div>
+
+                {hasSubcategories && isExpanded ? (
+                  <div className="catalog-sheet-children">
+                    {visibleSubcategories.map((subNode) => {
+                      const sub = subNode.label;
+                      const subgroupKey = `${cat}::${sub}`;
+                      const hasChildren = Array.isArray(subNode.children) && subNode.children.length > 0;
+                      const isSubExpanded = expandedSubgroupKey === subgroupKey;
+                      const visibleLeaves = !query
+                        ? (Array.isArray(subNode.children) ? subNode.children : [])
+                        : (Array.isArray(subNode.children) ? subNode.children : []).filter((leaf) => norm(leaf).includes(query));
+
+                      return (
+                        <div key={`sheet-${subgroupKey}`} className="catalog-sheet-subgroup">
+                          <div className={`catalog-sheet-row is-child ${isActiveSub(cat, sub) ? 'is-active' : ''}`}>
+                            <button
+                              type="button"
+                              className="catalog-sheet-select"
+                              onClick={() => selectSubcategoryAndClose(cat, sub)}
+                            >
+                              <span>{sub}</span>
+                              {isActiveSub(cat, sub) && !value.leafcategory ? (
+                                <span className="catalog-sheet-pill">Activo</span>
+                              ) : null}
+                            </button>
+                            {hasChildren ? (
+                              <button
+                                type="button"
+                                className={`catalog-sheet-toggle ${isSubExpanded ? 'is-open' : ''}`}
+                                onClick={() => setExpandedSubgroupKey((prev) => (prev === subgroupKey ? '' : subgroupKey))}
+                                aria-label={isSubExpanded ? `Contraer ${sub}` : `Expandir ${sub}`}
+                              >
+                                <span />
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {hasChildren && isSubExpanded ? (
+                            <div className="catalog-sheet-leaves">
+                              {visibleLeaves.map((leaf) => (
+                                <button
+                                  key={`sheet-${subgroupKey}-${leaf}`}
+                                  type="button"
+                                  className={`catalog-sheet-leaf ${isActiveLeaf(cat, sub, leaf) ? 'is-active' : ''}`}
+                                  onClick={() => selectLeafAndClose(cat, sub, leaf)}
+                                >
+                                  <span>{leaf}</span>
+                                  {isActiveLeaf(cat, sub, leaf) ? <span className="catalog-sheet-pill">Activo</span> : null}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        {!filteredCategories.length ? (
+          <div className="catalog-sheet-empty">No encontramos categorías para esa búsqueda.</div>
+        ) : null}
+      </Modal.Body>
+      <div className="catalog-sheet-footer">
+        <div className="catalog-sheet-footer-copy">
+          <strong>{mobileSelectionSummary ? 'Filtro listo' : 'Sin filtros activos'}</strong>
+          <span>{mobileTriggerSummary}</span>
+        </div>
+        <button type="button" className="catalog-sheet-apply-btn" onClick={closeMobileCategorySheet}>
+          Ver productos
+        </button>
+      </div>
+    </Modal>
+  );
 
   return (
     <div className="card border-0 shadow-sm">
@@ -963,19 +1176,42 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
           </form>
         </div>
 
-        <button
-          type="button"
-          className={`catalog-categories-toggle ${categoriesOpen ? 'is-open' : ''}`}
-          onClick={() => setCategoriesOpen((prev) => !prev)}
-          aria-expanded={categoriesOpen}
-        >
-          <span className="small text-muted fw-bold">CATEGORÍAS</span>
-          <span className="catalog-categories-toggle-icon" aria-hidden="true">
-            {categoriesOpen ? '−' : '+'}
-          </span>
-        </button>
+        {isMobile ? (
+          <>
+            <button
+              type="button"
+              className="catalog-mobile-category-trigger"
+              onClick={() => setShowMobileCategorySheet(true)}
+            >
+              <span className="catalog-mobile-category-trigger-copy">
+                <strong>Filtrar categorías</strong>
+                <small>{mobileSelectionSummary ? `${activeCategoryCount} filtro${activeCategoryCount > 1 ? 's' : ''} activo${activeCategoryCount > 1 ? 's' : ''}` : 'Abrí el panel para elegir'}</small>
+              </span>
+              <span className="catalog-mobile-category-trigger-meta">
+                {activeCategoryCount ? <span className="catalog-mobile-category-trigger-badge">{activeCategoryCount}</span> : null}
+                {mobileSelectionSummary ? <span className="catalog-mobile-category-trigger-label">{mobileTriggerSummary}</span> : null}
+                <span className="catalog-mobile-category-trigger-icon" aria-hidden="true">
+                  <span className="catalog-mobile-category-trigger-chevron" />
+                </span>
+              </span>
+            </button>
+            {renderMobileCategorySheet()}
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={`catalog-categories-toggle ${categoriesOpen ? 'is-open' : ''}`}
+              onClick={() => setCategoriesOpen((prev) => !prev)}
+              aria-expanded={categoriesOpen}
+            >
+              <span className="small text-muted fw-bold">CATEGORÍAS</span>
+              <span className="catalog-categories-toggle-icon" aria-hidden="true">
+                {categoriesOpen ? '−' : '+'}
+              </span>
+            </button>
 
-        {categoriesOpen ? (
+            {categoriesOpen ? (
         <div className="accordion accordion-flush mt-2" id={isMobile ? "accMobile" : "accDesktop"}>
           <button
             type="button"
@@ -1136,7 +1372,9 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
             );
           })}
         </div>
-        ) : null}
+            ) : null}
+          </>
+        )}
 
         <div className="mt-3 small text-muted">
           <div className="fw-semibold mb-1">Seleccion:</div>
@@ -1924,20 +2162,55 @@ export default function Productos() {
           )}
         {(() => {
           const chips = [];
-          if (cat) chips.push(cat);
-          if (subcat) chips.push(subcat);
-          if (searchDebounced.trim()) chips.push(`"${searchDebounced.trim()}"`);
+          if (cat) {
+            chips.push({
+              key: `cat-${cat}`,
+              label: cat,
+              onRemove: () => handleAppliedChange({ q: searchDebounced, category: '', subcategory: '', leafcategory: '' }),
+            });
+          }
+          if (subcat) {
+            chips.push({
+              key: `sub-${subcat}`,
+              label: subcat,
+              onRemove: () => handleAppliedChange({ q: searchDebounced, category: cat, subcategory: '', leafcategory: '' }),
+            });
+          }
+          if (leafcat) {
+            chips.push({
+              key: `leaf-${leafcat}`,
+              label: leafcat,
+              onRemove: () => handleAppliedChange({ q: searchDebounced, category: cat, subcategory: subcat, leafcategory: '' }),
+            });
+          }
+          if (searchDebounced.trim()) {
+            chips.push({
+              key: `q-${searchDebounced.trim()}`,
+              label: `"${searchDebounced.trim()}"`,
+              onRemove: () => handleAppliedChange({ q: '', category: cat, subcategory: subcat, leafcategory: leafcat }),
+            });
+          }
 
           if (!chips.length) return null;
           return (
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-              {chips.map((c, i) => (
-                <Badge key={`${c}-${i}`} bg="warning" text="dark" className="filter-chip">{c}</Badge>
+            <div className="catalog-filter-chips mb-3">
+              {chips.slice(0, 2).map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  className="catalog-filter-chip"
+                  onClick={chip.onRemove}
+                  aria-label={`Quitar filtro ${chip.label}`}
+                >
+                  <span>{chip.label}</span>
+                  <span className="catalog-filter-chip-x" aria-hidden="true">×</span>
+                </button>
               ))}
+              {chips.length > 2 ? <span className="catalog-filter-chip-more">+{chips.length - 2}</span> : null}
               <Button
                 size="sm"
                 variant="outline-secondary"
-                onClick={() => handleAppliedChange({ q: '', category: '', subcategory: '' })}
+                onClick={() => handleAppliedChange({ q: '', category: '', subcategory: '', leafcategory: '' })}
               >
                 Quitar filtros
               </Button>

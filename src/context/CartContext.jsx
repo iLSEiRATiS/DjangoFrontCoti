@@ -9,6 +9,7 @@ export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cart_items') || '[]'); } catch { return []; }
   });
+  const [cartNotice, setCartNotice] = useState(null);
 
   const userKey = user?.id || user?._id || user?.pk || null;
 
@@ -82,10 +83,29 @@ export function CartProvider({ children }) {
         atributos: attributes
       }]);
     }
+    setCartNotice({
+      id: Date.now(),
+      tone: 'success',
+      title: 'Agregado al carrito',
+      productName: product.nombre || product.name || 'Producto',
+      message: 'El producto se cargo satisfactoriamente.',
+    });
   };
 
+  const dismissCartNotice = () => setCartNotice(null);
+
   const removeFromCart = (id) => {
+    const removedItem = cartItems.find(it => String(it.id) === String(id));
     persist(cartItems.filter(it => String(it.id) !== String(id)));
+    if (removedItem) {
+      setCartNotice({
+        id: Date.now(),
+        tone: 'danger',
+        title: 'Eliminado del carrito',
+        productName: removedItem.nombre || 'Producto',
+        message: 'El producto se elimino satisfactoriamente.',
+      });
+    }
   };
 
   const clearCart = () => persist([]);
@@ -123,7 +143,9 @@ export function CartProvider({ children }) {
     getTotalItems,
     getTotalPrice,
     canBuy,
-  }), [cartItems, canBuy]);
+    cartNotice,
+    dismissCartNotice,
+  }), [cartItems, canBuy, cartNotice]);
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;
 }
