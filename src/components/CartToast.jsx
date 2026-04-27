@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Toast, ToastContainer } from 'react-bootstrap';
 import { useCart } from '../context/CartContext';
 
@@ -18,7 +19,9 @@ export default function CartToast() {
     return () => window.clearTimeout(timer);
   }, [cartNotice?.id, dismissCartNotice]);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal((
     <ToastContainer position="top-end" className="cart-toast-container p-3">
       <Toast
         show={Boolean(cartNotice)}
@@ -42,5 +45,5 @@ export default function CartToast() {
         </Toast.Body>
       </Toast>
     </ToastContainer>
-  );
+  ), document.body);
 }
