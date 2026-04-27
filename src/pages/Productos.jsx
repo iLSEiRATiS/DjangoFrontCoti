@@ -1284,7 +1284,7 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                         const subCollapseId = `${isMobile ? "m" : "d"}-${idx}-sub-${subIdx}`;
                         const subHeaderId = `${isMobile ? "m" : "d"}-${idx}-sub-head-${subIdx}`;
                         const subgroupKey = `${cat}::${sub}`;
-                        const subOpen = expandedSubgroups[subgroupKey] || isActiveSub(cat, sub);
+                        const subOpen = expandedSubgroupKey === subgroupKey || isActiveSub(cat, sub);
 
                         if (!hasChildren) {
                           return (
@@ -1325,10 +1325,9 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                                         leafcategory: '',
                                       };
                                     });
-                                    setExpandedSubgroups((prev) => ({
-                                      ...prev,
-                                      [subgroupKey]: !subOpen || !isActiveSub(cat, sub),
-                                    }));
+                                    setExpandedSubgroupKey((prev) => (
+                                      prev === subgroupKey && isActiveSub(cat, sub) ? '' : subgroupKey
+                                    ));
                                   }}
                                 >
                                   <span className="me-auto">{sub}</span>
@@ -2303,12 +2302,12 @@ export default function Productos() {
                         {!isLoggedIn ? (
                           <span className="text-muted small">Inicia sesion para ver precios</span>
                         ) : p.descuento?.percent ? (
-                          <div>
-                            <div className="text-muted text-decoration-line-through small">
+                          <div className="product-price-discounted">
+                            <div className="product-price-original">
                               {money.format(Number(priceOriginalValue ?? 0))}
                             </div>
                             <div className="d-flex align-items-center gap-2">
-                              <span>{money.format(Number(priceValue ?? 0))}</span>
+                              <span className="product-price-current">{money.format(Number(priceValue ?? 0))}</span>
                               <Badge bg="success">-{p.descuento.percent}%</Badge>
                             </div>
                           </div>
