@@ -486,12 +486,17 @@ a{color:var(--link)} a:hover{opacity:.9}
 .auth-card .alert-danger{ background:#fff1f3; color:#7f1d1d; }
 .auth-card .alert-success{ background:#eefdf3; color:#064e3b; }
 
+.cart-toast-layer{
+  position: fixed;
+  inset: 0;
+  z-index: 2140;
+  pointer-events: none;
+}
 .cart-toast-container{
-  position: fixed !important;
+  position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + .9rem);
   right: .9rem;
   left: auto;
-  z-index: 2000;
   width: min(100%, 420px);
   pointer-events: none;
 }
@@ -592,7 +597,6 @@ a{color:var(--link)} a:hover{opacity:.9}
 @media (max-width: 991.98px){
   .cart-toast-container{
     width: min(100%, 360px);
-    padding: .85rem !important;
     top: calc(env(safe-area-inset-top, 0px) + .8rem);
     right: .8rem;
   }
@@ -610,7 +614,6 @@ a{color:var(--link)} a:hover{opacity:.9}
     top: calc(env(safe-area-inset-top, 0px) + .75rem);
     width: auto;
     max-width: none;
-    padding: 0 !important;
   }
   .cart-toast{
     width: 100%;
