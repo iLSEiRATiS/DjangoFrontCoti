@@ -1,6 +1,6 @@
 ﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  Container, Row, Col, Button, Dropdown, Pagination, Form, Spinner, InputGroup, Modal
+  Container, Row, Col, Button, Dropdown, Pagination, Form, Spinner, InputGroup, Modal, Badge
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -537,7 +537,7 @@ const applyCategoryOrderRules = (nodes = [], parentPath = []) => {
 const orderRootNodes = (nodes = []) => {
   const sortedAlphabetically = [...nodes];
   sortNodesAlphabetically(sortedAlphabetically);
-  return orderNodesWithPreferredLabels(sortedAlphabetically, CATEGORY_ORDER_RULES.roots);
+  return sortedAlphabetically;
 };
 
 function buildTreeFromApi(categories = []) {
@@ -592,10 +592,10 @@ function buildCategoryTreeFromProducts(products) {
     map.get(c).add(s);
   }
   const obj = {};
-  orderNodesWithPreferredLabels(
-    Array.from(map.keys()).map((label) => ({ label, slug: slugify(label) })),
-    CATEGORY_ORDER_RULES.roots,
-  ).forEach(({ label: c }) => {
+  Array.from(map.keys())
+    .map((label) => ({ label, slug: slugify(label) }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'es'))
+    .forEach(({ label: c }) => {
     obj[c] = Array.from(map.get(c)).sort().map((label) => ({ label, children: [] }));
   });
   return obj;
@@ -1618,28 +1618,16 @@ export default function Productos() {
           const singleFallback = normalizeImageUrl(p.imageUrl || p.image_url || p.imagen || '');
           const images = [...new Set([singleFallback, ...normalizedImages].filter(Boolean))];
           const img = images[0] || `https://placehold.co/600x400?text=${encodeURIComponent(p.name || 'Producto')}`;
-          const offer = offers.find((o) => {
-            const pid = o.producto ?? o.product;
-            const cid = o.categoria ?? o.category;
-            const now = Date.now();
-            const startsOk = !o.empieza || new Date(o.empieza).getTime() <= now;
-            const endsOk = !o.termina || new Date(o.termina).getTime() >= now;
-            const active = o.activo !== false && startsOk && endsOk;
-            if (!active) return false;
-            if (pid && (String(pid) === String(p._id) || String(pid) === String(p.id))) return true;
-            if (cid && p.category?.id && String(cid) === String(p.category.id)) return true;
-            return false;
-          });
           const precioOriginal = Number(p.priceOriginal ?? p.precioOriginal ?? p.price ?? p.precio ?? 0);
           const precioBaseRaw = Number(p.price ?? p.precio ?? precioOriginal);
           const precioBase = precioBaseRaw > 0 ? precioBaseRaw : precioOriginal;
-          let descuentoPct = Number(p.discount?.percent ?? p.descuento?.percent ?? offer?.porcentaje ?? 0);
+          let descuentoPct = Number(p.discount?.percent ?? p.descuento?.percent ?? 0);
           if (!descuentoPct && precioOriginal > 0 && precioBase < precioOriginal) {
             descuentoPct = Math.max(0, Math.round((1 - (precioBase / precioOriginal)) * 100));
           }
-          const precio = descuentoPct ? +(precioOriginal * (1 - descuentoPct / 100)).toFixed(2) : precioBase;
+          const precio = precioBase;
           const descuento = descuentoPct
-            ? { percent: descuentoPct, ...(p.discount || p.descuento || {}), offerId: offer?.id || offer?._id }
+            ? { percent: descuentoPct, ...(p.discount || p.descuento || {}) }
             : null;
           const categoryObj = p.categoria || p.category || null;
           const rawAttributes = p.attributes || p.atributos || {};
@@ -2028,11 +2016,15 @@ export default function Productos() {
   };
 
   const getEffectiveOriginalPrice = (product, attrs = {}) => {
+    const explicitOriginal = Number(product?.precioOriginal ?? 0);
+    if (Number.isFinite(explicitOriginal) && explicitOriginal > 0) return explicitOriginal;
     const basePrice = getEffectiveBasePrice(product, attrs);
     return basePrice > 0 ? basePrice : Number(product?.precioOriginal ?? product?.precio ?? 0);
   };
 
   const getEffectivePrice = (product, attrs = {}) => {
+    const fixedPrice = Number(product?.precio);
+    if (Number.isFinite(fixedPrice) && fixedPrice > 0) return fixedPrice;
     const original = getEffectiveOriginalPrice(product, attrs);
     const discountPct = Number(product?.descuento?.percent ?? 0);
     if (discountPct > 0 && original > 0) {

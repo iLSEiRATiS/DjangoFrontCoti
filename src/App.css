@@ -1583,6 +1583,17 @@ a{color:var(--link)} a:hover{opacity:.9}
   font-size:1.25rem;
   color:#0f172a;
 }
+.product-price-original{
+  color:#64748b;
+  text-decoration:line-through;
+  font-size:.88rem;
+  font-weight:600;
+  margin-bottom:.1rem;
+}
+.product-price-current{
+  color:#b42318;
+  font-weight:800;
+}
 .product-qty-label{
   font-weight:600;
   color:#475569 !important;
