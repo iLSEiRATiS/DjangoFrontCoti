@@ -145,7 +145,8 @@ export default function Panel() {
       setCatErr(''); setCatLoading(true);
       try {
         const data = await api.products.categories();
-        if (alive) setCategorias(Array.isArray(data) ? data : []);
+        const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+        if (alive) setCategorias(items);
       } catch (e) {
         if (alive) setCatErr(e.message || 'No se pudieron cargar categorias');
       } finally {
@@ -374,7 +375,7 @@ export default function Panel() {
                 <option value="">Sin categoria</option>
                 {categorias.map((c) => (
                   <option key={String(c.id || c._id)} value={String(c.id || c._id)}>
-                    {c.nombre || c.name || c.label}
+                    {c.name || c.nombre || c.label}
                   </option>
                 ))}
               </Form.Select>
@@ -452,10 +453,10 @@ export default function Panel() {
         {categorias.map((c) => (
           <li key={c.id || c.slug} className="list-group-item d-flex justify-content-between align-items-center">
             <div>
-              <div className="fw-semibold">{c.nombre}</div>
+              <div className="fw-semibold">{c.name || c.nombre}</div>
               {c.slug && <small className="text-muted">/{c.slug}</small>}
             </div>
-            {c.parent && <Badge bg="light" text="dark">Depende de {c.parent}</Badge>}
+            {c.parent && <Badge bg="light" text="dark">Depende de {c.parent?.name || c.parent}</Badge>}
           </li>
         ))}
         {categorias.length === 0 && !catLoading && (

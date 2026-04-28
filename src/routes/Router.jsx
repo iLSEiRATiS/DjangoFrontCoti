@@ -1,5 +1,5 @@
 // frontend/src/routes/Router.js
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import Layout from '../components/Layout';
 import ProtectedRoute from './ProtectedRoute';
@@ -13,7 +13,6 @@ const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 const Carrito = lazy(() => import('../pages/Carrito'));
 const Account = lazy(() => import('../pages/Account'));
-const Admin = lazy(() => import('../pages/Admin'));
 const Panel = lazy(() => import('../pages/Panel'));
 const Orders = lazy(() => import('../pages/Orders'));     // NUEVO
 const Checkout = lazy(() => import('../pages/Checkout')); // NUEVO
@@ -76,7 +75,7 @@ const AppRouter = () => (
             path="/admin"
             element={
               <ProtectedRoute admin>
-                <Admin />
+                <Navigate to="/panel?tab=dashboard" replace />
               </ProtectedRoute>
             }
           />

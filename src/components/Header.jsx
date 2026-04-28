@@ -203,7 +203,7 @@ const Header = () => {
               <Nav.Link as={Link} to="/productos" onClick={goToProductsTop} className="nav-link-plain">Productos</Nav.Link>
               <Button type="button" className="header-contact-btn" onClick={() => setShowContactModal(true)}>Contacto</Button>
               {user?.role === 'admin' && (
-                <Nav.Link as={Link} to="/admin" className="nav-link-plain">Admin</Nav.Link>
+                <Nav.Link as={Link} to="/panel?tab=dashboard" className="nav-link-plain">Admin</Nav.Link>
               )}
             </Nav>
           </div>
@@ -341,7 +341,7 @@ const Header = () => {
             </ListGroup.Item>
 
             {user?.role === 'admin' && (
-              <ListGroup.Item action as={Link} to="/admin" onClick={() => setShowMobileMenu(false)}>
+              <ListGroup.Item action as={Link} to="/panel?tab=dashboard" onClick={() => setShowMobileMenu(false)}>
                 Admin
               </ListGroup.Item>
             )}
