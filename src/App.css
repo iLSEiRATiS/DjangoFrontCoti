@@ -1160,10 +1160,13 @@ a{color:var(--link)} a:hover{opacity:.9}
   border-color:#ffd27a;
 }
 .catalog-sheet-row.is-parent{
-  background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.96));
+  background:linear-gradient(180deg, rgba(255,244,247,.98), rgba(255,250,251,.96));
+  border-color:rgba(206,37,68,.18);
 }
 .catalog-sheet-row.is-child{
   margin-left:.35rem;
+  background:linear-gradient(180deg, rgba(248,250,252,.98), rgba(255,255,255,.96));
+  border-color:rgba(15,23,42,.08);
 }
 .catalog-sheet-select{
   flex:1;
@@ -1184,9 +1187,11 @@ a{color:var(--link)} a:hover{opacity:.9}
 }
 .catalog-sheet-row.is-parent .catalog-sheet-select{
   font-size:.98rem;
+  color:#8d1730;
+  font-weight:800;
 }
 .catalog-sheet-row.is-child .catalog-sheet-select{
-  color:#1f2937;
+  color:#334155;
   font-size:.92rem;
   font-weight:650;
 }
@@ -1212,6 +1217,12 @@ a{color:var(--link)} a:hover{opacity:.9}
 }
 .catalog-sheet-toggle.is-open span{
   transform:rotate(225deg);
+}
+.accordion-button.no-children::after{
+  display:none;
+}
+.accordion-button.no-children{
+  padding-right:1rem;
 }
 .catalog-sheet-children{
   display:flex;

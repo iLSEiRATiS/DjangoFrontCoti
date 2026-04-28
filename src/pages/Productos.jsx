@@ -1241,24 +1241,24 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
               <div className="accordion-item" key={cat}>
                 <h2 className="accordion-header" id={headerId}>
                   <button
-                    className={`accordion-button ${open ? "" : "collapsed"} py-2`}
+                    className={`accordion-button ${open ? "" : "collapsed"} ${hasSubcategories ? "" : "no-children"} py-2`}
                     type="button"
                     aria-expanded={open ? "true" : "false"}
-                    aria-controls={collapseId}
+                    aria-controls={hasSubcategories ? collapseId : undefined}
                     onClick={() => setCategory(cat)}
                   >
                     <span className="me-auto fw-semibold">{cat}</span>
                   </button>
                 </h2>
 
-                <div
-                  id={collapseId}
-                  className={`accordion-collapse collapse ${open ? "show" : ""}`}
-                  aria-labelledby={headerId}
-                >
-                  <div className="accordion-body py-2">
-                    <div className="list-group list-group-flush">
-                      {hasSubcategories ? (
+                {hasSubcategories ? (
+                  <div
+                    id={collapseId}
+                    className={`accordion-collapse collapse ${open ? "show" : ""}`}
+                    aria-labelledby={headerId}
+                  >
+                    <div className="accordion-body py-2">
+                      <div className="list-group list-group-flush">
                         <button
                           type="button"
                           className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
@@ -1275,65 +1275,64 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                         >
                           <span>Ver todo</span>
                         </button>
-                      ) : null}
 
-                      {subcategories.map((subNode, subIdx) => {
-                        const sub = subNode.label;
-                        const key = `${cat}::${sub}`;
-                        const hasChildren = Array.isArray(subNode.children) && subNode.children.length > 0;
-                        const subCollapseId = `${isMobile ? "m" : "d"}-${idx}-sub-${subIdx}`;
-                        const subHeaderId = `${isMobile ? "m" : "d"}-${idx}-sub-head-${subIdx}`;
-                        const subgroupKey = `${cat}::${sub}`;
-                        const subOpen = expandedSubgroupKey === subgroupKey || isActiveSub(cat, sub);
+                        {subcategories.map((subNode, subIdx) => {
+                          const sub = subNode.label;
+                          const key = `${cat}::${sub}`;
+                          const hasChildren = Array.isArray(subNode.children) && subNode.children.length > 0;
+                          const subCollapseId = `${isMobile ? "m" : "d"}-${idx}-sub-${subIdx}`;
+                          const subHeaderId = `${isMobile ? "m" : "d"}-${idx}-sub-head-${subIdx}`;
+                          const subgroupKey = `${cat}::${sub}`;
+                          const subOpen = expandedSubgroupKey === subgroupKey || isActiveSub(cat, sub);
 
-                        if (!hasChildren) {
+                          if (!hasChildren) {
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                                  isActiveSub(cat, sub) ? "active" : ""
+                                }`}
+                                onClick={() => setSubcategory(cat, sub)}
+                              >
+                                <span className="text-truncate" style={{ maxWidth: 180 }}>
+                                  {sub}
+                                </span>
+                              </button>
+                            );
+                          }
+
                           return (
-                            <button
-                              key={key}
-                              type="button"
-                              className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
-                                isActiveSub(cat, sub) ? "active" : ""
-                              }`}
-                              onClick={() => setSubcategory(cat, sub)}
-                            >
-                              <span className="text-truncate" style={{ maxWidth: 180 }}>
-                                {sub}
-                              </span>
-                            </button>
-                          );
-                        }
-
-                        return (
-                          <div className="accordion accordion-flush ms-2" key={key}>
-                            <div className="accordion-item">
-                              <h2 className="accordion-header" id={subHeaderId}>
-                                <button
-                                  className={`accordion-button ${subOpen ? "" : "collapsed"} py-2`}
-                                  type="button"
-                                  aria-expanded={subOpen ? "true" : "false"}
-                                  aria-controls={subCollapseId}
-                                  onClick={() => {
-                                    onChange((prev) => {
-                                      const isCurrentGroupSelected =
-                                        prev.category === cat &&
-                                        prev.subcategory === sub &&
-                                        !prev.leafcategory;
-                                      return {
-                                        ...prev,
-                                        category: isCurrentGroupSelected ? '' : cat,
-                                        subcategory: isCurrentGroupSelected ? '' : sub,
-                                        leafcategory: '',
-                                      };
-                                    });
-                                    setExpandedSubgroupKey((prev) => (
-                                      prev === subgroupKey && isActiveSub(cat, sub) ? '' : subgroupKey
-                                    ));
-                                  }}
-                                >
-                                  <span className="me-auto">{sub}</span>
-                                </button>
-                              </h2>
-                              <div
+                            <div className="accordion accordion-flush ms-2" key={key}>
+                              <div className="accordion-item">
+                                <h2 className="accordion-header" id={subHeaderId}>
+                                  <button
+                                    className={`accordion-button ${subOpen ? "" : "collapsed"} py-2`}
+                                    type="button"
+                                    aria-expanded={subOpen ? "true" : "false"}
+                                    aria-controls={subCollapseId}
+                                    onClick={() => {
+                                      onChange((prev) => {
+                                        const isCurrentGroupSelected =
+                                          prev.category === cat &&
+                                          prev.subcategory === sub &&
+                                          !prev.leafcategory;
+                                        return {
+                                          ...prev,
+                                          category: isCurrentGroupSelected ? '' : cat,
+                                          subcategory: isCurrentGroupSelected ? '' : sub,
+                                          leafcategory: '',
+                                        };
+                                      });
+                                      setExpandedSubgroupKey((prev) => (
+                                        prev === subgroupKey && isActiveSub(cat, sub) ? '' : subgroupKey
+                                      ));
+                                    }}
+                                  >
+                                    <span className="me-auto">{sub}</span>
+                                  </button>
+                                </h2>
+                                <div
                                 id={subCollapseId}
                                 className={`accordion-collapse collapse ${subOpen ? "show" : ""}`}
                                 aria-labelledby={subHeaderId}
@@ -1360,13 +1359,14 @@ function FiltersSidebar({ tree, products, value, onChange, onClear, isMobile }) 
                                   </div>
                                 </div>
                               </div>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             );
           })}
