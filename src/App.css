@@ -43,6 +43,10 @@ body{
   font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
 }
+#root{
+  width:100%;
+  min-height:100%;
+}
 a{color:var(--link)} a:hover{opacity:.9}
 
 /* =======================================================
@@ -253,6 +257,8 @@ a{color:var(--link)} a:hover{opacity:.9}
    ======================================================= */
 .mobile-header{
   position:sticky; top:0; background:#fff;
+  width:100%;
+  max-width:100%;
   padding-top:max(.25rem, env(safe-area-inset-top));
   box-shadow:var(--shadow-sm);
   transition:transform .45s ease, opacity .45s ease;
@@ -1725,6 +1731,27 @@ a{color:var(--link)} a:hover{opacity:.9}
    FIX capas móvil
    ======================================================= */
 @media (max-width: 767.98px){
+  html, body, #root{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+  .mobile-header,
+  .mobile-topbar,
+  .mobile-navrow,
+  .catalog-page,
+  .catalog-toolbar,
+  .catalog-body,
+  .catalog-scroll-shell,
+  .catalog-filters-sticky{
+    width:100%;
+    max-width:100%;
+  }
+  .container,
+  .container-fluid{
+    max-width:100%;
+    overflow-x:hidden;
+  }
   .mobile-header{ z-index:1040; }
   .offcanvas, .offcanvas-mobile{ z-index:1200 !important; }
   .offcanvas-backdrop.show{ z-index:1190 !important; }
