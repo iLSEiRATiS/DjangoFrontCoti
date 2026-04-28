@@ -2215,7 +2215,7 @@ export default function Productos() {
               : `Mostrando ${startIdx}-${endIdx} de ${total}`}
           </div>
 
-          <Row className="g-4">
+          <Row className="catalog-products-grid g-3 g-md-4 justify-content-center">
             {paginated.map((p) => {
               const attrs = getSelectedAttributes(p);
               const priceValue = getEffectivePrice(p, attrs);
@@ -2224,7 +2224,7 @@ export default function Productos() {
               const productKey = getProductKey(p);
 
               return (
-              <Col key={p.id || `${p.categoria}-${p.nombre}`} xs={6} md={4} lg={3}>
+              <Col key={p.id || `${p.categoria}-${p.nombre}`} xs={6} md={4} lg={3} className="catalog-product-col">
                 <div
                   className="product-card h-100 d-flex flex-column"
                   onClick={() => openDetail(p)}
