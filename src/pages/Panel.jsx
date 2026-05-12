@@ -752,7 +752,7 @@ export default function Panel() {
                   <td>{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
                   <td><Badge bg="secondary">{o.statusLabel || ORDER_STATUS_LABELS[o.status] || o.status}</Badge></td>
                   <td className="text-end">
-                    <Button size="sm" variant="outline-secondary" href={`https://api.cotistore.com.ar/panel-seguro-2026-Coti-Store/orders/order/${o._id}/change/`} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline-secondary" href={`${API_BASE}/admin/orders/order/${o._id}/change/`} target="_blank" rel="noreferrer">
                       Abrir en Django
                     </Button>
                   </td>
@@ -775,7 +775,7 @@ export default function Panel() {
           <h4 className="mb-0">Ofertas</h4>
           <small className="text-muted">Descuentos por producto o categoria.</small>
         </div>
-        <Button size="sm" variant="outline-secondary" href="https://api.cotistore.com.ar/panel-seguro-2026-Coti-Store/products/offer/" target="_blank" rel="noreferrer">
+        <Button size="sm" variant="outline-secondary" href={`${API_BASE}/admin/products/offer/`} target="_blank" rel="noreferrer">
           Gestionar en Django
         </Button>
       </div>
