@@ -100,6 +100,7 @@ export default function ProductDetail() {
           categoryName: p.category?.name || p.category?.nombre || '',
           categorySlug: p.category?.slug || '',
           videoUrl: p.videoUrl || p.video_url || '',
+          sinStock: p.sin_stock || false,
           images,
         };
         const initialAttrs = {};
@@ -329,9 +330,14 @@ export default function ProductDetail() {
 
                 {!isLoggedIn ? (
                   <Alert variant="warning" className="small mb-0">Inicia sesion para ver precios y comprar.</Alert>
+                ) : product.sinStock ? (
+                  <Button variant="secondary" disabled className="w-100">
+                    Sin stock
+                  </Button>
                 ) : (
                   <Button
                     variant="primary"
+                    className="w-100"
                     onClick={() => addToCart(
                       {
                         id: product.id,

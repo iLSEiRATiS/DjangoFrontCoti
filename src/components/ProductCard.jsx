@@ -10,6 +10,7 @@ const ProductCard = ({ product, onAdd }) => {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
+  const isSinStock = product.sin_stock === true;
   const nombre = product.nombre || product.name || 'Producto';
   const precio = product.precio ? product.price ? 0;
   const categoria = product.categoria || product.category?.name || '-';
@@ -34,6 +35,14 @@ const ProductCard = ({ product, onAdd }) => {
           className="object-fit-cover"
         />
         <span className="badge badge-category">{categoria}</span>
+        {isSinStock && (
+          <div
+            className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+            style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff', fontWeight: 'bold', fontSize: '1.2rem' }}
+          >
+            SIN STOCK
+          </div>
+        )}
       </div>
 
       <Card.Body className="d-flex flex-column">
@@ -46,9 +55,15 @@ const ProductCard = ({ product, onAdd }) => {
         {isLoggedIn ? (
           <>
             <div className="fw-bold mb-3">{money.format(precio)}</div>
-            <Button className="mt-auto w-100" variant="primary" onClick={() => onAdd(product)}>
-              Agregar al carrito
-            </Button>
+            {isSinStock ? (
+              <Button className="mt-auto w-100" variant="secondary" disabled>
+                Sin stock
+              </Button>
+            ) : (
+              <Button className="mt-auto w-100" variant="primary" onClick={() => onAdd(product)}>
+                Agregar al carrito
+              </Button>
+            )}
           </>
         ) : (
           <div className="mt-auto text-center text-muted small border rounded py-3 px-2">

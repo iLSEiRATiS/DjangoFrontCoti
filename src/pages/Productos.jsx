@@ -1666,6 +1666,7 @@ export default function Productos() {
             subsubcategoria: subsubcategoryName,
             categoria_path: categoryPath.length ? categoryPath : (categoryName ? [categoryName] : []),
             activo,
+            sin_stock: p.sin_stock || false,
             atributos: attributes,
             atributos_stock: rawAttributesStock,
             atributos_precio: rawAttributesPrice,
@@ -2252,6 +2253,14 @@ export default function Productos() {
                         Sin imagen
                       </div>
                     )}
+                    {p.sin_stock && (
+                      <div
+                        className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                        style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff', fontWeight: 'bold', fontSize: '1.2rem', borderRadius: '8px' }}
+                      >
+                        SIN STOCK
+                      </div>
+                    )}
                   </div>
                   <div className="p-3 d-flex flex-column flex-grow-1">
                     <h6 className="product-card-title mb-2">{p.nombre}</h6>
@@ -2336,16 +2345,16 @@ export default function Productos() {
                             aria-label="Cantidad"
                           />
                           <Button
-                            variant="primary"
+                            variant={p.sin_stock ? "secondary" : "primary"}
                             size="sm"
-                            disabled={!isLoggedIn}
+                            disabled={!isLoggedIn || p.sin_stock}
                             onClick={(e) => {
                               e.stopPropagation();
                               const qty = getCardQty(p, qtyMax);
                               addToCart(resolveProductForCart(p, attrs), Math.max(1, Math.min(qtyMax, qty)), attrs);
                             }}
                           >
-                            {!isLoggedIn ? 'Inicia sesion' : 'Agregar al carrito'}
+                            {!isLoggedIn ? 'Inicia sesion' : p.sin_stock ? 'Sin stock' : 'Agregar al carrito'}
                           </Button>
                         </div>
                       </div>
@@ -2538,15 +2547,15 @@ export default function Productos() {
                   </div>
 
                   <Button
-                    variant="primary"
+                    variant={detailProduct.sin_stock ? "secondary" : "primary"}
                     className={isMobile ? 'w-100' : ''}
-                      disabled={!isLoggedIn}
+                      disabled={!isLoggedIn || detailProduct.sin_stock}
                       onClick={() => {
                        const safeQty = Math.max(1, Number(detailQty) || 1);
                        addToCart(resolveProductForCart(detailProduct, detailAttrs), safeQty, detailAttrs);
                       }}
                     >
-                    {!isLoggedIn ? 'Inicia sesion' : 'Agregar al carrito'}
+                    {!isLoggedIn ? 'Inicia sesion' : detailProduct.sin_stock ? 'Sin stock' : 'Agregar al carrito'}
                   </Button>
                 </div>
               </Col>
