@@ -10,7 +10,7 @@ const ProductCard = ({ product, onAdd }) => {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
-  const isSinStock = product.sin_stock === true;
+  const isSinStock = product.sin_stock === true || product.sinStock === true;
   const nombre = product.nombre || product.name || 'Producto';
   const precio = product.precio ? product.price ? 0;
   const categoria = product.categoria || product.category?.name || '-';

@@ -100,7 +100,7 @@ export default function ProductDetail() {
           categoryName: p.category?.name || p.category?.nombre || '',
           categorySlug: p.category?.slug || '',
           videoUrl: p.videoUrl || p.video_url || '',
-          sinStock: p.sin_stock || false,
+          sinStock: p.sin_stock || p.sinStock || false,
           images,
         };
         const initialAttrs = {};
