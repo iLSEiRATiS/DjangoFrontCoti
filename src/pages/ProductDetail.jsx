@@ -41,20 +41,16 @@ const getVideoEmbed = (value) => {
   return { type: 'iframe', src: raw };
 };
 
-const norm = (s = '') =>
-  s
-    .toString()
-    .trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+// Normalización estricta para comparaciones
+const cleanString = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 const getAttributeOptions = (attrName, values, productName) => {
   const list = Array.isArray(values) ? values : (values ? [values] : []);
   const cleaned = list.map((v) => String(v).trim()).filter(Boolean);
-  const normalizedName = norm(attrName || '');
-  const asksNumberInName = norm(productName || '').includes('elegir numero');
+  const normName = cleanString(attrName);
+  const asksNumberInName = cleanString(productName).includes('elegir numero');
   const placeholderLike = cleaned.length <= 1 && cleaned.some((v) => /elegir|numero|n[úu]mero/i.test(v));
-  if (normalizedName.includes('numero') && (asksNumberInName || placeholderLike || cleaned.length <= 1)) {
+  if (normName.includes('numero') && (asksNumberInName || placeholderLike || cleaned.length <= 1)) {
     return Array.from({ length: 10 }, (_, i) => String(i));
   }
   return cleaned;
@@ -83,31 +79,45 @@ export default function ProductDetail() {
       try {
         const p = await api.products.get(id);
         if (!alive) return;
+
         const rawImages = Array.isArray(p.images) ? p.images : [];
         const normalizedImages = rawImages.map((x) => normalizeImageUrl(x)).filter(Boolean);
         const fallbackImage = normalizeImageUrl(p.imageUrl || p.image_url || p.imagen || '');
         const images = [...new Set([fallbackImage, ...normalizedImages].filter(Boolean))];
+
         const mapped = {
-          id: p._id || p.id || p.slug,
-          name: p.name || p.nombre || 'Producto',
-          description: p.description || p.descripcion || '',
-          price: Number(p.price ?? p.precio ?? 0),
-          priceOriginal: Number(p.priceOriginal ?? p.precioOriginal ?? p.price ?? p.precio ?? 0),
-          discount: p.discount || p.descuento || null,
+          id: p.id || id,
+          name: p.nombre || p.name || 'Producto',
+          description: p.descripcion || p.description || '',
+          price: Number(p.precio ?? p.price ?? 0),
+          priceOriginal: Number(p.priceOriginal ?? p.precioOriginal ?? p.precio ?? p.price ?? 0),
+          discount: p.descuento || p.discount || null,
           stock: Number(p.stock ?? 0),
-          attributes: p.attributes || p.atributos || {},
-          attributesPrice: p.attributes_price || p.atributos_precio || {},
-          categoryName: p.category?.name || p.category?.nombre || '',
-          categorySlug: p.category?.slug || '',
-          videoUrl: p.videoUrl || p.video_url || '',
-          sinStock: p.sin_stock || p.sinStock || false,
+          sinStock: !!(p.sin_stock || p.sinStock),
+          attributes: p.atributos || p.attributes || {},
+          attributesSinStock: p.atributos_sin_stock || p.attributes_sin_stock || {},
           images,
+          videoUrl: p.video_url || p.videoUrl || '',
+          categoryName: p.categoria?.nombre || p.category?.name || '',
+          categorySlug: p.categoria?.slug || p.category?.slug || '',
         };
+
         const initialAttrs = {};
-        Object.entries(mapped.attributes).forEach(([k, v]) => {
-          const opts = getAttributeOptions(k, v, mapped.name);
-          if (opts.length) initialAttrs[k] = String(opts[0]);
+        Object.entries(mapped.attributes).forEach(([attrKey, values]) => {
+          const allOptions = getAttributeOptions(attrKey, values, mapped.name);
+          const disabledList = mapped.attributesSinStock[attrKey] || [];
+          const disabledClean = disabledList.map(v => clean(v));
+          
+          // Filtrar las opciones que NO están sin stock
+          const visibleOptions = allOptions.filter(opt => !disabledClean.includes(clean(opt)));
+
+          if (visibleOptions.length > 0) {
+            initialAttrs[attrKey] = String(visibleOptions[0]);
+          } else if (allOptions.length > 0) {
+            initialAttrs[attrKey] = String(allOptions[0]);
+          }
         });
+
         setSelectedAttrs(initialAttrs);
         setProduct(mapped);
         setSelectedImage(images[0] || '');
@@ -128,258 +138,119 @@ export default function ProductDetail() {
     if (Number.isFinite(Number(genericVariantPrice)) && Number(genericVariantPrice) > 0) {
       return Number(genericVariantPrice);
     }
-    const original = Number(product.priceOriginal || 0);
-    const base = Number(product.price || 0);
-    return original > 0 ? original : base;
+    return product.priceOriginal > 0 ? product.priceOriginal : product.price;
   }, [product, selectedAttrs]);
 
   const effectivePrice = useMemo(() => {
     if (!product) return 0;
-    const discountPct = Number(product?.discount?.percent || 0);
+    const discountPct = Number(product.discount?.percent || 0);
     if (discountPct > 0 && effectivePriceOriginal > 0) {
       return +(effectivePriceOriginal * (1 - discountPct / 100)).toFixed(2);
     }
-    const base = Number(product.price || 0);
-    return base > 0 ? base : effectivePriceOriginal;
+    return product.price > 0 ? product.price : effectivePriceOriginal;
   }, [effectivePriceOriginal, product]);
 
   const hasDiscount = useMemo(() => effectivePriceOriginal > effectivePrice, [effectivePrice, effectivePriceOriginal]);
-  const videoEmbed = useMemo(() => getVideoEmbed(product?.videoUrl), [product?.videoUrl]);
-  const seoTitle = product ? `${product.name} - mayorista` : 'Detalle de producto';
-  const seoDescription = normalizeText(product?.description || `Compra ${product?.name || 'producto'} en CotiStore mayorista.`);
-  const seoImage = product?.images?.[0] || '';
-  const seoPath = `/productos/${encodeURIComponent(id || '')}`;
-  const seoSchema = useMemo(() => {
-    if (!product) return null;
-    const stockState = Number(product.stock || 0) > 0 ? 'InStock' : 'OutOfStock';
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: product.name,
-      description: seoDescription,
-      image: (product.images || []).map((img) => toAbsoluteUrl(img)),
-      sku: String(product.id || id || ''),
-      brand: { '@type': 'Brand', name: 'CotiStore' },
-      offers: {
-        '@type': 'Offer',
-        priceCurrency: 'ARS',
-        price: Number(effectivePrice || 0),
-        availability: `https://schema.org/${stockState}`,
-        url: toAbsoluteUrl(seoPath),
-      },
-    };
-  }, [effectivePrice, id, product, seoDescription, seoPath]);
+  
+  // LOGICA CLAVE: Verificar si la variante actualmente seleccionada está "Sin stock"
+  const isSelectedVariantOutOfStock = useMemo(() => {
+    if (!product) return false;
+    
+    // Si el producto ENTERO está sin stock, siempre devolvemos true
+    if (product.sinStock) return true;
 
-  const selectImageByIndex = (idx) => {
-    if (!product?.images?.length) return;
-    const safe = ((idx % product.images.length) + product.images.length) % product.images.length;
-    setSelectedImageIndex(safe);
-    setSelectedImage(product.images[safe] || '');
-  };
+    // Revisar los atributos seleccionados
+    for (const [attrName, selectedVal] of Object.entries(selectedAttrs)) {
+      const disabledList = product.attributesSinStock[attrName] || [];
+      const disabledClean = disabledList.map(v => cleanString(v));
+      
+      if (disabledClean.includes(cleanString(selectedVal))) {
+        return true; // Esta variante específica fue marcada sin stock
+      }
+    }
+    
+    return false;
+  }, [product, selectedAttrs]);
 
-  const openZoom = () => {
-    if (!selectedImage) return;
-    setZoomOpen(true);
-  };
 
-  if (loading) {
-    return (
-      <>
-        <Seo title="Cargando producto" description="Cargando detalle de producto." path={seoPath} noindex />
-        <Container className="py-4 text-center">
-          <Spinner animation="border" />
-        </Container>
-      </>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <>
-        <Seo title="Producto no encontrado" description="El producto solicitado no existe." path={seoPath} noindex />
-        <Container className="py-4">
-          <Alert variant="danger">{error || 'Producto no encontrado'}</Alert>
-          <Button variant="outline-secondary" onClick={() => navigate('/productos')}>Volver a productos</Button>
-        </Container>
-      </>
-    );
-  }
+  if (loading) return <Container className="py-5 text-center"><Spinner animation="border" /></Container>;
+  if (error || !product) return <Container className="py-5"><Alert variant="danger">{error || 'No encontrado'}</Alert></Container>;
 
   return (
     <>
-      <Seo title={seoTitle} description={seoDescription} path={seoPath} image={seoImage} type="product" jsonLd={seoSchema} />
+      <Seo title={`${product.name} - mayorista`} description={product.description} path={`/productos/${id}`} image={product.images[0]} type="product" />
       <Container className="py-3">
-        <div className="detail-breadcrumb mb-2">
-          <Link to="/">Inicio</Link>
-          <span>/</span>
-          <Link to="/productos">Productos</Link>
-          {!!product.categoryName && (
-            <>
-              <span>/</span>
-              <Link to={product.categorySlug ? `/productos?cat=${encodeURIComponent(product.categorySlug)}` : '/productos'}>
-                {product.categoryName}
-              </Link>
-            </>
-          )}
-          <span>/</span>
-          <span className="text-muted">{product.name}</span>
-        </div>
+        <div className="mb-3"><Link to="/">Inicio</Link> / <Link to="/productos">Productos</Link> / <span className="text-muted">{product.name}</span></div>
 
-        <div className="product-detail-shell">
-          <Row className="g-3">
-            <Col lg={7}>
-              <div className="detail-gallery">
-                <div className="detail-thumbs">
-                  {product.videoUrl ? (
-                    <button
-                      type="button"
-                      className={`detail-thumb-btn ${!selectedImage ? 'is-active' : ''}`}
-                      onClick={() => setSelectedImage('')}
-                    >
-                      <div className="detail-video-thumb">Video</div>
-                    </button>
-                  ) : null}
-                  {product.images.map((img, idx) => (
-                    <button
-                      key={`thumb-${idx}`}
-                      type="button"
-                      className={`detail-thumb-btn ${selectedImage === img ? 'is-active' : ''}`}
-                      onClick={() => selectImageByIndex(idx)}
-                    >
-                      <img src={img} alt={`${product.name} ${idx + 1}`} />
-                    </button>
-                  ))}
-                </div>
-                <div className="detail-main-image">
-                  {selectedImage ? (
-                    <>
-                      <button type="button" className="detail-main-nav detail-main-prev" onClick={() => selectImageByIndex(selectedImageIndex - 1)} aria-label="Imagen anterior">
-                        ‹
-                      </button>
-                      <img src={selectedImage} alt={product.name} />
-                      <button type="button" className="detail-main-nav detail-main-next" onClick={() => selectImageByIndex(selectedImageIndex + 1)} aria-label="Imagen siguiente">
-                        ›
-                      </button>
-                      <button type="button" className="detail-zoom-btn" aria-label="Ampliar imagen" onClick={openZoom}>
-                        ⤢
-                      </button>
-                    </>
-                  ) : videoEmbed ? (
-                    videoEmbed.type === 'video' ? (
-                      <video className="detail-video-player" controls preload="metadata">
-                        <source src={videoEmbed.src} />
-                        Tu navegador no soporta video HTML5.
-                      </video>
-                    ) : (
-                      <iframe
-                        className="detail-video-player"
-                        src={videoEmbed.src}
-                        title={`Video de ${product.name}`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    )
-                  ) : (
-                    <div className="detail-empty-image">Sin imagen</div>
-                  )}
-                </div>
-              </div>
-            </Col>
-            <Col lg={5}>
-              <div className="detail-info">
-                <h2 className="detail-title">{product.name}</h2>
-                {!isLoggedIn ? (
-                  <div className="detail-price mb-3">
-                    <span className="text-muted small">Inicia sesion para ver precios</span>
-                  </div>
-                ) : hasDiscount ? (
-                  <div className="mb-3">
-                    <div className="text-muted text-decoration-line-through small">{money.format(effectivePriceOriginal)}</div>
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="detail-price">{money.format(effectivePrice)}</div>
-                      <Badge bg="success">-{product.discount.percent}%</Badge>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="detail-price mb-3">{money.format(effectivePrice)}</div>
-                )}
-
-                {Object.keys(product.attributes || {}).length > 0 && (
-                  <div className="mb-3">
-                    {Object.entries(product.attributes).map(([attrName, values]) => {
-                      const options = getAttributeOptions(attrName, values, product.name);
-                      if (!options.length) return null;
-                      return (
-                        <Form.Group className="mb-2" key={attrName}>
-                          <Form.Label className="small text-muted">{attrName}</Form.Label>
-                          <Form.Select value={selectedAttrs[attrName] || options[0]} onChange={(e) => setSelectedAttrs((prev) => ({ ...prev, [attrName]: e.target.value }))}>
-                            {options.map((opt) => <option key={`${attrName}-${opt}`} value={opt}>{opt}</option>)}
-                          </Form.Select>
-                        </Form.Group>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="mb-3">
-                  <Form.Label className="small text-muted">Cantidad</Form.Label>
-                  <InputGroup style={{ maxWidth: 180 }}>
-                    <Form.Control type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} />
-                  </InputGroup>
-                </div>
-
-                {!isLoggedIn ? (
-                  <Alert variant="warning" className="small mb-0">Inicia sesion para ver precios y comprar.</Alert>
-                ) : product.sinStock ? (
-                  <Button variant="secondary" disabled className="w-100">
-                    Sin stock
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    className="w-100"
-                    onClick={() => addToCart(
-                      {
-                        id: product.id,
-                        nombre: product.name,
-                        precio: effectivePrice,
-                        precioOriginal: effectivePriceOriginal,
-                        imagen: product.images[0] || '',
-                      },
-                      qty,
-                      selectedAttrs
-                    )}
-                  >
-                    Agregar al carrito
-                  </Button>
-                )}
-
-                {!!product.videoUrl && (
-                  <div className="mt-3">
-                    <Button variant="outline-secondary" size="sm" onClick={() => setSelectedImage('')}>
-                      Ver video del producto
-                    </Button>
-                  </div>
-                )}
-
-                {!!product.description && (
-                  <div className="mt-3 small text-muted">{product.description}</div>
-                )}
-              </div>
-            </Col>
-          </Row>
-        </div>
-
-        <Modal show={zoomOpen} onHide={() => setZoomOpen(false)} centered size="xl">
-          <Modal.Header closeButton>
-            <Modal.Title>{product.name}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body className="p-0">
-            <div className="detail-zoom-wrap">
-              {selectedImage ? <img src={selectedImage} alt={product.name} /> : null}
+        <Row className="g-4">
+          <Col lg={7}>
+            <div className="border rounded bg-white p-2 mb-3 text-center" style={{ minHeight: 400 }}>
+              {selectedImage ? <img src={selectedImage} alt="" style={{ maxWidth: '100%', maxHeight: 500, objectFit: 'contain' }} /> : 'Sin imagen'}
             </div>
-          </Modal.Body>
-        </Modal>
+            <div className="d-flex gap-2 flex-wrap">
+              {product.images.map((img, idx) => (
+                <img key={idx} src={img} alt="" className={`border rounded p-1 ${selectedImageIndex === idx ? 'border-primary' : ''}`} style={{ width: 60, height: 60, cursor: 'pointer', objectFit: 'cover' }} onClick={() => { setSelectedImage(img); setSelectedImageIndex(idx); }} />
+              ))}
+            </div>
+          </Col>
+
+          <Col lg={5}>
+            <h1 className="h3 mb-3">{product.name}</h1>
+            
+            <div className="mb-4">
+              {!isLoggedIn ? <div className="text-muted">Inicia sesión para ver precios</div> : (
+                <div>
+                    {hasDiscount && <div className="text-muted text-decoration-line-through small">{money.format(effectivePriceOriginal)}</div>}
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="h3 text-primary mb-0">{money.format(effectivePrice)}</span>
+                      {hasDiscount && <Badge bg="success">-{product.discount.percent}% OFF</Badge>}
+                    </div>
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN DE ATRIBUTOS COMPLETOS */}
+            {Object.entries(product.attributes).map(([attrKey, values]) => {
+              const allOptions = getAttributeOptions(attrKey, values, product.name);
+              const disabledValues = product.attributesSinStock[attrKey] || [];
+              const disabledCleaned = disabledValues.map(v => cleanString(v));
+              
+              // Filtrar para que las opciones sin stock NO APAREZCAN
+              const availableOptions = allOptions.filter(opt => !disabledCleaned.includes(cleanString(opt)));
+
+              if (availableOptions.length === 0) return null;
+
+              return (
+                <Form.Group className="mb-3" key={attrKey}>
+                  <Form.Label className="small text-muted">{attrKey}</Form.Label>
+                  <Form.Select value={selectedAttrs[attrKey] || ''} onChange={(e) => setSelectedAttrs(prev => ({ ...prev, [attrKey]: e.target.value }))}>
+                    {availableOptions.map(opt => (
+                        <option key={opt} value={opt}>
+                            {opt}
+                        </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              );
+            })}
+
+            <div className="mb-4">
+              <Form.Label className="small text-muted">Cantidad</Form.Label>
+              <Form.Control type="number" min={1} style={{ maxWidth: 80 }} value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))} />
+            </div>
+
+            {/* BOTÓN DINÁMICO SEGÚN EL STOCK DE LA VARIANTE SELECCIONADA */}
+            {isSelectedVariantOutOfStock ? (
+              <Button variant="secondary" disabled className="w-100 py-2">PRODUCTO SIN STOCK</Button>
+            ) : (
+              <Button variant="primary" className="w-100 py-2" onClick={() => addToCart({ id: product.id, nombre: product.name, precio: effectivePrice, imagen: product.images[0] }, qty, selectedAttrs)}>
+                AGREGAR AL CARRITO
+              </Button>
+            )}
+
+            {product.description && <div className="mt-4 small text-muted border-top pt-3">{product.description}</div>}
+          </Col>
+        </Row>
       </Container>
     </>
   );

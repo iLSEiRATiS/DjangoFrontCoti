@@ -1,4 +1,4 @@
-﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Container, Row, Col, Button, Dropdown, Pagination, Form, Spinner, InputGroup, Modal, Badge
 } from 'react-bootstrap';
@@ -1670,6 +1670,7 @@ export default function Productos() {
             atributos: attributes,
             atributos_stock: rawAttributesStock,
             atributos_precio: rawAttributesPrice,
+            atributos_sin_stock: p.atributos_sin_stock || {},
             stock: Number(p.stock ?? 0),
           };
         });
@@ -2287,11 +2288,14 @@ export default function Productos() {
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                {list.map((v) => (
-                                  <option key={`${attrName}-${v}`} value={String(v)}>
-                                    {v}
-                                  </option>
-                                ))}
+                                {list.map((v) => {
+                                  const isOptionSinStock = p.atributos_sin_stock?.[attrName]?.includes(v);
+                                  return (
+                                    <option key={`${attrName}-${v}`} value={String(v)} disabled={isOptionSinStock}>
+                                      {v}{isOptionSinStock ? ' (sin stock)' : ''}
+                                    </option>
+                                  );
+                                })}
                               </Form.Select>
                             </div>
                           );
@@ -2344,18 +2348,28 @@ export default function Productos() {
                             onClick={(e) => e.stopPropagation()}
                             aria-label="Cantidad"
                           />
-                          <Button
-                            variant={p.sin_stock ? "secondary" : "primary"}
-                            size="sm"
-                            disabled={!isLoggedIn || p.sin_stock}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const qty = getCardQty(p, qtyMax);
-                              addToCart(resolveProductForCart(p, attrs), Math.max(1, Math.min(qtyMax, qty)), attrs);
-                            }}
-                          >
-                            {!isLoggedIn ? 'Inicia sesion' : p.sin_stock ? 'Sin stock' : 'Agregar al carrito'}
-                          </Button>
+                          {(() => {
+                            const isVarianteSinStock = attrs && p.atributos_sin_stock
+                              ? Object.entries(attrs).some(
+                                  ([attrName, val]) => p.atributos_sin_stock?.[attrName]?.includes(val)
+                                )
+                              : false;
+                            const isSinStock = p.sin_stock || isVarianteSinStock;
+                            return (
+                              <Button
+                                variant={isSinStock ? "secondary" : "primary"}
+                                size="sm"
+                                disabled={!isLoggedIn || isSinStock}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const qty = getCardQty(p, qtyMax);
+                                  addToCart(resolveProductForCart(p, attrs), Math.max(1, Math.min(qtyMax, qty)), attrs);
+                                }}
+                              >
+                                {!isLoggedIn ? 'Inicia sesion' : isSinStock ? 'Sin stock' : 'Agregar al carrito'}
+                              </Button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </>
@@ -2512,9 +2526,14 @@ export default function Productos() {
                                 }));
                               }}
                             >
-                              {list.map((v) => (
-                                <option key={`${attrName}-modal-${v}`} value={String(v)}>{v}</option>
-                              ))}
+                              {list.map((v) => {
+                                const isOptionSinStock = detailProduct.atributos_sin_stock?.[attrName]?.includes(v);
+                                return (
+                                  <option key={`${attrName}-modal-${v}`} value={String(v)} disabled={isOptionSinStock}>
+                                    {v}{isOptionSinStock ? ' (sin stock)' : ''}
+                                  </option>
+                                );
+                              })}
                             </Form.Select>
                           </div>
                         );
@@ -2546,17 +2565,27 @@ export default function Productos() {
                     </InputGroup>
                   </div>
 
-                  <Button
-                    variant={detailProduct.sin_stock ? "secondary" : "primary"}
-                    className={isMobile ? 'w-100' : ''}
-                      disabled={!isLoggedIn || detailProduct.sin_stock}
-                      onClick={() => {
-                       const safeQty = Math.max(1, Number(detailQty) || 1);
-                       addToCart(resolveProductForCart(detailProduct, detailAttrs), safeQty, detailAttrs);
-                      }}
-                    >
-                    {!isLoggedIn ? 'Inicia sesion' : detailProduct.sin_stock ? 'Sin stock' : 'Agregar al carrito'}
-                  </Button>
+                  {(() => {
+                    const isVarianteDetalleSinStock = detailAttrs && detailProduct.atributos_sin_stock
+                      ? Object.entries(detailAttrs).some(
+                          ([attrName, val]) => detailProduct.atributos_sin_stock?.[attrName]?.includes(val)
+                        )
+                      : false;
+                    const isDetalleSinStock = detailProduct.sin_stock || isVarianteDetalleSinStock;
+                    return (
+                      <Button
+                        variant={isDetalleSinStock ? "secondary" : "primary"}
+                        className={isMobile ? 'w-100' : ''}
+                        disabled={!isLoggedIn || isDetalleSinStock}
+                        onClick={() => {
+                          const safeQty = Math.max(1, Number(detailQty) || 1);
+                          addToCart(resolveProductForCart(detailProduct, detailAttrs), safeQty, detailAttrs);
+                        }}
+                      >
+                        {!isLoggedIn ? 'Inicia sesion' : isDetalleSinStock ? 'Sin stock' : 'Agregar al carrito'}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </Col>
             </Row>
