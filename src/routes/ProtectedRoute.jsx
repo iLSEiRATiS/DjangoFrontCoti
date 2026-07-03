@@ -24,6 +24,7 @@ export default function ProtectedRoute({ children, admin = false, requireAdmin }
     const redirect = encodeURIComponent(loc.pathname || '/');
     return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
+
   if (mustBeAdmin && user.role !== 'admin') {
     return <Navigate to="/" replace />;
   }

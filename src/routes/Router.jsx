@@ -20,6 +20,7 @@ const Terms = lazy(() => import('../pages/Terms'));
 const Privacy = lazy(() => import('../pages/Privacy'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
+
 const AppRouter = () => (
   <BrowserRouter>
     <Layout>
@@ -33,6 +34,7 @@ const AppRouter = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/carrito" element={<Carrito />} />
+
 
           {/* Usuario logueado */}
           <Route

@@ -108,6 +108,7 @@ export const api = {
   },
   admin: {
     listUsers:     (token, params)      => http(`/api/admin/users${qs(params)}`, { token }),
+    resetUserPassword: (token, id)      => http(`/api/admin/users/${encodeURIComponent(id)}/reset_password/`, { method: 'POST', token }),
     createUser:    (token, data)        => http('/api/admin/users', { method: 'POST', token, body: data }),
     updateUser:    (token, id, d)       => http(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', token, body: d }),
     deleteUser:    (token, userId)      => http(`/api/admin/users/${encodeURIComponent(userId)}`, { method: 'DELETE', token }),

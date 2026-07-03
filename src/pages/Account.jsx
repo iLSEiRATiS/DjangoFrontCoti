@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Tabs, Tab, Form, Row, Col, Button, Alert, Spinner, Table } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import api, { API_BASE } from '../lib/api';
@@ -16,8 +16,17 @@ const safeAvatarSrc = (url) => {
 
 export default function Account() {
   const { token, user, login, logout } = useAuth();
-  const navigate = useNavigate();
-  const [tab, setTab] = useState('profile');
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const [tab, setTab] = useState(query.get('tab') || 'profile');
+  
+  useEffect(() => {
+    const urlTab = query.get('tab');
+    if (urlTab && urlTab !== tab) {
+      setTab(urlTab);
+    }
+  }, [location.search]);
+  
   const isAdmin = user?.role === 'admin';
   const PRODUCT_HEADERS = [
     'sku',
@@ -323,8 +332,17 @@ export default function Account() {
     }
     try {
       setSavingPwd(true);
-      await api.account.changePassword(token, { currentPassword: pwd.currentPassword, newPassword: pwd.newPassword });
+      await api.account.changePassword(token, { 
+        currentPassword: user?.must_change_password ? 'Abcd1234' : pwd.currentPassword, 
+        newPassword: pwd.newPassword 
+      });
       setPwd({ currentPassword: '', newPassword: '', confirm: '' });
+      
+      // If we just resolved a forced password change, update the local user context
+      if (user?.must_change_password) {
+        login({ token, user: { ...user, must_change_password: false } });
+      }
+      
       window.alert('Contraseña actualizada');
     } catch (e) {
       if (handleAuthError(e)) return;
@@ -502,10 +520,12 @@ export default function Account() {
               </Tab>
               <Tab eventKey="security" title="Seguridad">
                 <Form onSubmit={onChangePassword} className="mb-4 mt-3" style={{maxWidth:560}}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Contraseña actual</Form.Label>
-                    <Form.Control type="password" value={pwd.currentPassword} onChange={e=>setPwd(v=>({...v, currentPassword:e.target.value}))} required />
-                  </Form.Group>
+                  {!user?.must_change_password && (
+                    <Form.Group className="mb-3">
+                      <Form.Label>Contraseña actual</Form.Label>
+                      <Form.Control type="password" value={pwd.currentPassword} onChange={e=>setPwd(v=>({...v, currentPassword:e.target.value}))} required />
+                    </Form.Group>
+                  )}
                   <Form.Group className="mb-3">
                     <Form.Label>Nueva contraseña</Form.Label>
                     <Form.Control type="password" value={pwd.newPassword} onChange={e=>setPwd(v=>({...v, newPassword:e.target.value}))} required />

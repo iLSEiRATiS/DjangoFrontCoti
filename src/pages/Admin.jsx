@@ -282,6 +282,18 @@ export default function Admin() {
     }
   }
 
+  async function handleResetPassword(id) {
+    if (!id) return;
+    if (!window.confirm('¿Reestablecer la contraseña de este usuario a Abcd1234@?')) return;
+    try {
+      await api.admin.resetUserPassword(token, id);
+      window.alert('Contraseña reestablecida exitosamente. El usuario deberá cambiarla al iniciar sesión.');
+    } catch (e) {
+      if (handleAuthError(e)) return;
+      window.alert(e?.message || 'No se pudo reestablecer la contraseña.');
+    }
+  }
+
   async function handleCreateUser(e) {
     e.preventDefault();
     try {
@@ -654,6 +666,7 @@ export default function Admin() {
                   </td>
                   <td>{new Date(u.createdAt).toLocaleString()}</td>
                   <td className="text-end d-flex flex-wrap gap-2 justify-content-end">
+                    <Button size="sm" variant="outline-warning" onClick={() => handleResetPassword(id)}>Reestablecer Clave</Button>
                     <Button size="sm" variant="outline-primary" onClick={() => openShippingEditor(u)}>Envío</Button>
                     <Button size="sm" variant="outline-danger" onClick={() => handleDeleteUser(id)}>Borrar</Button>
                   </td>

@@ -27,11 +27,17 @@ export default function Login() {
   const [err, setErr] = useState('');
   const redirect = useMemo(() => getSafeRedirect(location.search, window.location.origin), [location.search]);
 
-  const { login, isLoggedIn } = useAuth();
+  const { login, isLoggedIn, user } = useAuth();
 
   useEffect(() => {
-    if (isLoggedIn) navigate(redirect, { replace: true });
-  }, [isLoggedIn, navigate, redirect]);
+    if (isLoggedIn) {
+      if (user?.must_change_password) {
+        navigate('/account', { replace: true });
+      } else {
+        navigate(redirect, { replace: true });
+      }
+    }
+  }, [isLoggedIn, navigate, redirect, user]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -41,7 +47,11 @@ export default function Login() {
       const data = await api.auth.login({ email, password });
       if (!data?.token || !data?.user) throw new Error('Respuesta invalida');
       login({ token: data.token, user: data.user });
-      navigate(redirect, { replace: true });
+      if (data.user?.must_change_password) {
+        navigate('/account', { replace: true });
+      } else {
+        navigate(redirect, { replace: true });
+      }
     } catch (e2) {
       setErr(e2?.message || 'No se pudo iniciar sesion');
     } finally {

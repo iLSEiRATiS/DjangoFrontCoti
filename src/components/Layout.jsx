@@ -14,6 +14,7 @@ const Layout = ({ children }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [welcomeKey, setWelcomeKey] = useState('');
 
   useEffect(() => {
@@ -23,10 +24,17 @@ const Layout = ({ children }) => {
       return;
     }
     const key = welcomeKeyFor(user);
-    if (!key) return;
-    setWelcomeKey(key);
-    if (!localStorage.getItem(key)) {
-      setShowWelcome(true);
+    if (key) {
+      setWelcomeKey(key);
+      if (!localStorage.getItem(key) && !user.must_change_password) {
+        setShowWelcome(true);
+      }
+    }
+    
+    if (user.must_change_password) {
+      setShowPasswordReset(true);
+    } else {
+      setShowPasswordReset(false);
     }
   }, [user]);
 
@@ -37,6 +45,10 @@ const Layout = ({ children }) => {
   const goToAccount = () => {
     closeWelcome();
     navigate('/account');
+  };
+  const goToSecurity = () => {
+    setShowPasswordReset(false);
+    navigate('/account?tab=security');
   };
 
   return (
@@ -62,6 +74,18 @@ const Layout = ({ children }) => {
         <Modal.Footer>
           <Button variant="outline-secondary" onClick={closeWelcome}>Cerrar</Button>
           <Button variant="primary" onClick={goToAccount}>Ir a Mi cuenta</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showPasswordReset} onHide={goToSecurity} centered backdrop="static" keyboard={false}>
+        <Modal.Header>
+          <Modal.Title>Aviso de Seguridad</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Tu contraseña ha sido restablecida por un administrador. Por favor, selecciona "seguridad" y cambia tu clave ahora mismo para mayor seguridad.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={goToSecurity}>Cambiar contraseña</Button>
         </Modal.Footer>
       </Modal>
     </div>
