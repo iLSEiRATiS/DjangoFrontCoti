@@ -48,11 +48,15 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
   }, []);
 
   const handleChange = (id, value) => {
+    if (value === '') {
+      setQuantity(id, '');
+      return;
+    }
     const num = Number(value);
     if (!Number.isFinite(num)) return;
     const item = cartItems.find((x) => String(x.id) === String(id));
     const maxStock = Number.isFinite(Number(item?.maxStock)) ? Number(item.maxStock) : 9999;
-    const cap = Math.min(9999, maxStock);
+    const cap = Math.min(9999, maxStock > 0 ? maxStock : 9999);
     setQuantity(id, Math.max(1, Math.min(cap, Math.trunc(num))));
   };
 
@@ -137,6 +141,11 @@ const CarritoOffcanvas = ({ show, handleClose }) => {
                           max={9999}
                           value={item.cantidad}
                           onChange={(e) => handleChange(item.id, e.target.value)}
+                          onBlur={() => {
+                            if (item.cantidad === '') {
+                              setQuantity(item.id, 1);
+                            }
+                          }}
                           style={{ width: 72, textAlign: 'center' }}
                           aria-label={`Cantidad para ${item.nombre}`}
                         />

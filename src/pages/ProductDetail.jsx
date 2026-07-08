@@ -236,7 +236,22 @@ export default function ProductDetail() {
 
             <div className="mb-4">
               <Form.Label className="small text-muted">Cantidad</Form.Label>
-              <Form.Control type="number" min={1} style={{ maxWidth: 80 }} value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))} />
+              <Form.Control 
+                type="number" 
+                min={1} 
+                style={{ maxWidth: 80 }} 
+                value={qty} 
+                onChange={(e) => {
+                  if (e.target.value === '') {
+                    setQty('');
+                    return;
+                  }
+                  setQty(Math.max(1, parseInt(e.target.value) || 1));
+                }}
+                onBlur={() => {
+                  if (qty === '') setQty(1);
+                }}
+              />
             </div>
 
             {/* BOTÓN DINÁMICO SEGÚN EL STOCK DE LA VARIANTE SELECCIONADA */}
