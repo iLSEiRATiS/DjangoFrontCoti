@@ -2412,7 +2412,7 @@ export default function Productos() {
         scrollable
         className="product-detail-modal"
       >
-        <Modal.Header closeButton>
+        <Modal.Header closeButton className="product-detail-modal-header">
           <Modal.Title className="text-truncate">{detailProduct?.nombre || 'Producto'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
