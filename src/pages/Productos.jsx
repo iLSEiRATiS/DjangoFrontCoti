@@ -1806,21 +1806,26 @@ export default function Productos() {
       return;
     }
     if (!paginationScrollIntentRef.current) return;
+    if (loading) return; // Esperar a que la grilla recupere su altura real
     paginationScrollIntentRef.current = false;
 
     if (resultsScrollRef.current) {
       resultsScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
 
-    if (isMobile && gridTopRef.current) {
-      const header =
-        document.querySelector('.mobile-header:not(.is-hidden)') ||
-        document.querySelector('.header-navbar:not(.is-hidden)');
-      const headerHeight = header?.getBoundingClientRect().height || 72;
-      const y = gridTopRef.current.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
-      window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+    if (isMobile) {
+      const scrollToToolbar = () => {
+        const toolbar = document.querySelector('.catalog-toolbar');
+        if (toolbar) {
+          toolbar.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      };
+      scrollToToolbar();
+      window.requestAnimationFrame(scrollToToolbar);
+      setTimeout(scrollToToolbar, 50);
+      setTimeout(scrollToToolbar, 150);
     }
-  }, [isMobile, safePage]);
+  }, [isMobile, safePage, loading]);
 
   useEffect(() => {
     const el = resultsScrollRef.current;

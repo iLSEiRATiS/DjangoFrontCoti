@@ -1406,6 +1406,7 @@ a{color:var(--link)} a:hover{opacity:.9}
   padding:12px 14px;
   box-shadow:var(--shadow-sm);
   margin-bottom:16px;
+  scroll-margin-top: 90px;
 }
 .catalog-summary{ display:flex; flex-direction:column; gap:2px; }
 .catalog-title{ margin:0; font-weight:900; font-size:1.1rem; color:#111; }
