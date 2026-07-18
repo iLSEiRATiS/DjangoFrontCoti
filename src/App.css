@@ -2035,6 +2035,7 @@ html, body, #root { height: 100%; }
   }
   .detail-info{
     padding:0;
+  }
 }
 /* Destacar boton cerrar en detalle de producto */
 .product-detail-modal-header .btn-close {
