@@ -10,7 +10,7 @@ const FloatingWhatsApp = () => {
       className="d-flex align-items-center justify-content-center bg-success text-white shadow"
       style={{
         position: 'fixed',
-        bottom: '20px',
+        bottom: '80px',
         right: '20px',
         width: '60px',
         height: '60px',
