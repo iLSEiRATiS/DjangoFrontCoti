@@ -1,4 +1,4 @@
-﻿// src/components/Footer.jsx
+// src/components/Footer.jsx
 import { useEffect, useState } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
@@ -50,8 +50,8 @@ const Footer = () => {
                   <span className="footer-icon" aria-hidden>
                     <FaPhoneAlt />
                   </span>
-                  <a href="tel:+541139581816" className="link-light text-decoration-none">
-                    11 3958-1816
+                  <a href="tel:+541150443472" className="link-light text-decoration-none">
+                    11 5044-3472
                   </a>
                 </li>
               </ul>

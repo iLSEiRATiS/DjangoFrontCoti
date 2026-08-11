@@ -9,6 +9,7 @@ const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS
 
 const ProductCard = ({ product, onAdd }) => {
   const { isLoggedIn } = useAuth();
+  const { config: storeConfig } = useStoreConfig();
   const navigate = useNavigate();
 
   const isSinStock = product.sin_stock === true || product.sinStock === true;

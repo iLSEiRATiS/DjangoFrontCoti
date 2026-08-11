@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import api from '../lib/api';
 
 const StoreConfigContext = createContext(null);
 
@@ -13,7 +13,7 @@ export const StoreConfigProvider = ({ children }) => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const data = await api.storeConfig();
+        const data = await api.products.storeConfig();
         setConfig({
           minOrderAmount: Number(data?.minOrderAmount || 100000),
           showPricesToGuests: data?.showPricesToGuests ?? true

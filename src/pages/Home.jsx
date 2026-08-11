@@ -520,7 +520,7 @@ const Home = () => {
               </p>
             </div>
             <div className="d-flex gap-2">
-              <Button as="a" href="https://wa.me/5491139581816" target="_blank" rel="noopener noreferrer" variant="success">
+              <Button as="a" href="https://wa.me/5491150443472" target="_blank" rel="noopener noreferrer" variant="success">
                 Escribinos por WhatsApp
               </Button>
               <Button as={Link} to="/productos" variant="outline-success">

@@ -3,6 +3,7 @@ import { Alert, Button, Container, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
+import FloatingWhatsApp from './FloatingWhatsApp';
 import { useAuth } from '../context/AuthContext';
 
 const welcomeKeyFor = (user) => {
@@ -63,6 +64,7 @@ const Layout = ({ children }) => {
         {children}
       </Container>
       <Footer />
+      <FloatingWhatsApp />
 
       <Modal show={showWelcome} onHide={closeWelcome} centered>
         <Modal.Header closeButton>

@@ -34,7 +34,7 @@ const Terms = () => {
               CotiStore es una tienda online orientada a la comercialización mayorista de artículos de cotillón,
               repostería, papelería, librería y rubros relacionados. Para consultas comerciales o administrativas,
               podés comunicarte a <a href="mailto:ventascotistore@gmail.com">ventascotistore@gmail.com</a> o al
-              teléfono <a href="tel:+541139581816">11 3958-1816</a>.
+              teléfono <a href="tel:+541150443472">11 5044-3472</a>.
             </p>
           </Section>
 
