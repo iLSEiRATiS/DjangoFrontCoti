@@ -3,6 +3,7 @@ import { Card, Table, Alert, Spinner, Button, Tabs, Tab, Form, Row, Col, Badge, 
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useStoreConfig } from '../context/StoreConfigContext';
 import api from '../lib/api';
 
 const STATUSES = ['created', 'approved', 'pending_payment', 'paid', 'shipped', 'delivered', 'cancelled'];
@@ -51,6 +52,7 @@ const sizeGroupMatchesProduct = (product, label = '') => {
 
 export default function Admin() {
   const { token, user, logout } = useAuth();
+  const { config: storeConfig, setConfig: setStoreConfig } = useStoreConfig();
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
 
@@ -579,6 +581,29 @@ export default function Admin() {
   const renderUsers = () => (
     <>
       {uErr && <Alert variant="danger" className="mb-3">{uErr}</Alert>}
+      
+      <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded border">
+        <div>
+          <h5 className="mb-1">Configuración Global</h5>
+          <div className="text-muted small">Controla si los usuarios no registrados pueden ver los precios.</div>
+        </div>
+        <Form.Check 
+          type="switch"
+          id="toggle-guest-prices"
+          label={storeConfig?.showPricesToGuests ? "Precios visibles" : "Precios ocultos"}
+          checked={storeConfig?.showPricesToGuests ?? true}
+          onChange={async (e) => {
+            const newVal = e.target.checked;
+            try {
+              const res = await api.admin.updateStoreConfig(token, { showPricesToGuests: newVal });
+              setStoreConfig(prev => ({ ...prev, showPricesToGuests: res.showPricesToGuests }));
+            } catch (err) {
+              setUErr('Error al actualizar configuración de precios');
+            }
+          }}
+        />
+      </div>
+
       <Form onSubmit={(e)=>{e.preventDefault();}} className="mb-2">
         <Row className="g-2 align-items-end">
           <Col md>

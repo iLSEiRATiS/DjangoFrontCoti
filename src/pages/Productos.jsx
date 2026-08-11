@@ -5,6 +5,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useStoreConfig } from '../context/StoreConfigContext';
 import productosData from '../data/productos.json';
 import api, { API_BASE } from '../lib/api';
 import Seo from '../components/Seo';
@@ -1412,6 +1413,7 @@ function useMediaQuery(query) {
 export default function Productos() {
   const { addToCart } = useCart();
   const { isLoggedIn } = useAuth();
+  const { config: storeConfig } = useStoreConfig();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -2309,8 +2311,8 @@ export default function Productos() {
                     )}
                     <>
                       <div className="product-price mb-3">
-                        {!isLoggedIn ? (
-                          <span className="text-muted small">Inicia sesion para ver precios</span>
+                        {(!isLoggedIn && !storeConfig?.showPricesToGuests) ? (
+                          <span className="text-muted small">Iniciá sesión para ver precios</span>
                         ) : p.descuento?.percent ? (
                           <div className="product-price-discounted">
                             <div className="product-price-original">
@@ -2493,8 +2495,8 @@ export default function Productos() {
                   <div className="text-muted small mb-1">{detailProduct.categoria || '-'}</div>
                   <h4 className="detail-title mb-2">{detailProduct.nombre}</h4>
                   <div className="fw-bold mb-3">
-                    {!isLoggedIn ? (
-                      <span className="text-muted small">Inicia sesion para ver precios</span>
+                    {(!isLoggedIn && !storeConfig?.showPricesToGuests) ? (
+                      <span className="text-muted small">Iniciá sesión para ver precios</span>
                     ) : detailProduct.descuento?.percent ? (
                       <div>
                         <div className="text-muted text-decoration-line-through small">

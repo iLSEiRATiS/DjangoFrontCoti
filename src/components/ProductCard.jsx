@@ -2,6 +2,7 @@
 import { Card, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useStoreConfig } from '../context/StoreConfigContext';
 import { API_BASE } from '../lib/api';
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
@@ -52,20 +53,7 @@ const ProductCard = ({ product, onAdd }) => {
         <div className="text-muted small mb-2">ID: {id}</div>
 
         {/* --- Control de sesión --- */}
-        {isLoggedIn ? (
-          <>
-            <div className="fw-bold mb-3">{money.format(precio)}</div>
-            {isSinStock ? (
-              <Button className="mt-auto w-100" variant="secondary" disabled>
-                Sin stock
-              </Button>
-            ) : (
-              <Button className="mt-auto w-100" variant="primary" onClick={() => onAdd(product)}>
-                Agregar al carrito
-              </Button>
-            )}
-          </>
-        ) : (
+        {(!isLoggedIn && !storeConfig?.showPricesToGuests) ? (
           <div className="mt-auto text-center text-muted small border rounded py-3 px-2">
             <p className="mb-2" style={{ fontStyle: 'italic' }}>
               Iniciá sesión para ver precios y comprar
@@ -74,6 +62,30 @@ const ProductCard = ({ product, onAdd }) => {
               Iniciar sesión
             </Button>
           </div>
+        ) : (
+          <>
+            <div className="fw-bold mb-3">{money.format(precio)}</div>
+            {isLoggedIn ? (
+              isSinStock ? (
+                <Button className="mt-auto w-100" variant="secondary" disabled>
+                  Sin stock
+                </Button>
+              ) : (
+                <Button className="mt-auto w-100" variant="primary" onClick={() => onAdd(product)}>
+                  Agregar al carrito
+                </Button>
+              )
+            ) : (
+              <div className="mt-auto text-center text-muted small border rounded py-2 px-2">
+                <p className="mb-2" style={{ fontStyle: 'italic' }}>
+                  Iniciá sesión para comprar
+                </p>
+                <Button variant="outline-primary" size="sm" onClick={() => navigate('/login')}>
+                  Iniciar sesión
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </Card.Body>
     </Card>

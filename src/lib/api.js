@@ -124,7 +124,8 @@ export const api = {
     createOffer:   (token, d)           => http('/api/admin/offers', { method: 'POST', token, body: d }),
     updateOffer:   (token, id, d)       => http(`/api/admin/offers/${encodeURIComponent(id)}`, { method: 'PATCH', token, body: d }),
     deleteOffer:   (token, id)          => http(`/api/admin/offers/${encodeURIComponent(id)}`, { method: 'DELETE', token }),
-    importProductsXlsx: (token, formData) => http('/api/admin/products/import-xlsx', { method: 'POST', token, body: formData })
+    importProductsXlsx: (token, formData) => http('/api/admin/products/import-xlsx', { method: 'POST', token, body: formData }),
+    updateStoreConfig: (token, d)         => http('/api/admin/store-config', { method: 'POST', token, body: d })
   }
 };
 

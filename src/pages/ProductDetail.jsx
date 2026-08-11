@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Col, Container, Form, InputGroup, Modal, Row, Spi
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { API_BASE } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useStoreConfig } from '../context/StoreConfigContext';
 import { useCart } from '../context/CartContext';
 import Seo from '../components/Seo';
 import { getGenericVariantPrice } from '../lib/productVariants';
@@ -60,6 +61,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
+  const { config: storeConfig } = useStoreConfig();
   const { addToCart } = useCart();
 
   const [loading, setLoading] = useState(true);
@@ -196,9 +198,10 @@ export default function ProductDetail() {
 
           <Col lg={5}>
             <h1 className="h3 mb-3">{product.name}</h1>
-            
             <div className="mb-4">
-              {!isLoggedIn ? <div className="text-muted">Inicia sesión para ver precios</div> : (
+              {(!isLoggedIn && !storeConfig?.showPricesToGuests) ? (
+                <div className="text-muted">Iniciá sesión para ver precios</div>
+              ) : (
                 <div>
                     {hasDiscount && <div className="text-muted text-decoration-line-through small">{money.format(effectivePriceOriginal)}</div>}
                     <div className="d-flex align-items-center gap-2">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Col, Container, Row, Table, Alert, Spinner, Form } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useStoreConfig } from '../context/StoreConfigContext';
 import api, { API_BASE } from '../lib/api';
 
 const TABS_BASE = [
@@ -72,6 +73,7 @@ const approvalVariant = (status) => {
 
 export default function Panel() {
   const { user, token, logout } = useAuth();
+  const { config: storeConfig, setConfig: setStoreConfig } = useStoreConfig();
   const [params, setParams] = useSearchParams();
   const role = user?.role || 'customer';
   const isAdmin = role === 'admin';
@@ -652,6 +654,24 @@ export default function Panel() {
         <div>
           <h4 className="mb-0">Usuarios</h4>
           <small className="text-muted">Aprobacion y vista general de clientes desde el panel.</small>
+        </div>
+        <div className="d-flex align-items-center bg-light border px-3 py-2 rounded gap-3">
+          <div className="small fw-semibold">Precios a invitados:</div>
+          <Form.Check 
+            type="switch"
+            id="toggle-guest-prices-panel"
+            label={storeConfig?.showPricesToGuests ? "Visibles" : "Ocultos"}
+            checked={storeConfig?.showPricesToGuests ?? true}
+            onChange={async (e) => {
+              const newVal = e.target.checked;
+              try {
+                const res = await api.admin.updateStoreConfig(token, { showPricesToGuests: newVal });
+                setStoreConfig(prev => ({ ...prev, showPricesToGuests: res.showPricesToGuests }));
+              } catch (err) {
+                setUsersErr('Error al actualizar configuración de precios');
+              }
+            }}
+          />
         </div>
         <Form.Control
           size="sm"
