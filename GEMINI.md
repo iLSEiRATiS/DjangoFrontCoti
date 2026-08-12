@@ -1,4 +1,21 @@
-# Resumen de Cambios (Cotistore Frontend)
+# Resumen de Cambios (Cotistore Frontend y Backend)
+
+## 1. Botón Flotante de WhatsApp y Actualización de Número
+* Se implementó un nuevo componente `FloatingWhatsApp.jsx` que muestra el icono de WhatsApp siempre visible en la esquina inferior derecha.
+* Se agregó una animación de escala al interactuar (hover) y se integró globalmente a través del componente `Layout.jsx`.
+* Se ajustó específicamente su margen inferior (`bottom: 80px`) para evitar cualquier tipo de superposición con el botón de "Volver arriba" de la tienda.
+* Se reemplazó el número de teléfono anterior en toda la plataforma por el nuevo: **1150443472** (Términos y condiciones, Footer, Home y el propio botón flotante).
+
+## 2. Corrección de Bug: Visibilidad de Precios a Invitados
+* Se detectó y resolvió un fallo de desestructuración y sintaxis en la llamada a la API (`api.products.storeConfig`) dentro de `StoreConfigContext.jsx` que causaba que el estado visual cayera en error silencioso.
+* Se aseguró que `ProductCard.jsx` consuma adecuadamente el contexto para decidir si oculta o muestra los precios al instante en base a la configuración.
+
+## 3. Reubicación de Configuración en Django Admin
+* Se extrajo la configuración general ("Mostrar precios a invitados", etc.) que antes estaba oculta en la App de Productos.
+* Mediante un modelo "Proxy" (`GlobalStoreSettings`), se inyectó esta opción de configuración directamente dentro del módulo de **Usuarios** en el panel de administrador nativo de Django, haciendo mucho más intuitivo su acceso.
+
+---
+
 
 Durante esta sesión de trabajo nos enfocamos en mejorar significativamente la experiencia de usuario (UX) en la versión móvil del catálogo y pulir detalles visuales en la vista de producto.
 
