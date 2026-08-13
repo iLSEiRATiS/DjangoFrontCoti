@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Alert, Spinner, Button, Tabs, Tab, Form, Row, Col, Badge, Pagination, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE } from '../lib/api';
+import { API_BASE, ADMIN_PATH } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useStoreConfig } from '../context/StoreConfigContext';
 import api from '../lib/api';
-
-const STATUSES = ['created', 'approved', 'pending_payment', 'paid', 'shipped', 'delivered', 'cancelled'];
+import SalesCalendar from '../components/SalesCalendar';
+const STATUSES = ['created', 'approved', 'pending_payment', 'paid', 'shipped', 'delivered', 'cancelled', 'closed'];
 const STATUS_LABELS = {
   created: 'Creado',
   approved: 'Aprobado',
@@ -15,6 +15,7 @@ const STATUS_LABELS = {
   shipped: 'Enviado',
   delivered: 'Entregado',
   cancelled: 'Cancelado',
+  closed: 'Cerrado',
 };
 const STATUS_VARIANTS = {
   created: 'secondary',
@@ -24,6 +25,7 @@ const STATUS_VARIANTS = {
   shipped: 'primary',
   delivered: 'success',
   cancelled: 'danger',
+  closed: 'dark',
 };
 
 const norm = (s = '') =>
@@ -943,7 +945,7 @@ export default function Admin() {
         <h5 className="m-0">Administración</h5>
         <a
           className="btn btn-outline-secondary btn-sm"
-          href={`${API_BASE}/admin/`}
+          href={`${API_BASE}/${ADMIN_PATH}`}
           target="_blank"
           rel="noreferrer"
         >
@@ -965,6 +967,9 @@ export default function Admin() {
             </Tab>
             <Tab eventKey="products" title="Productos">
               {renderProducts()}
+            </Tab>
+            <Tab eventKey="sales" title="Ventas">
+              {tab === 'sales' && <SalesCalendar />}
             </Tab>
           </Tabs>
         </Card.Body>

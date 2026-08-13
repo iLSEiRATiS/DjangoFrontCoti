@@ -3,16 +3,19 @@ import { Badge, Button, Col, Container, Row, Table, Alert, Spinner, Form } from 
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStoreConfig } from '../context/StoreConfigContext';
-import api, { API_BASE } from '../lib/api';
+import api, { API_BASE, ADMIN_PATH } from '../lib/api';
+import SalesCalendar from '../components/SalesCalendar';
 
 const TABS_BASE = [
   { key: 'dashboard', label: 'Resumen' },
   { key: 'productos', label: 'Productos' },
   { key: 'usuarios', label: 'Usuarios' },
   { key: 'pedidos', label: 'Pedidos' },
+  { key: 'ventas', label: 'Ventas' },
   { key: 'ofertas', label: 'Ofertas' },
   { key: 'cuenta', label: 'Mi cuenta' },
 ];
+
 
 const ORDER_STATUS_LABELS = {
   created: 'Creado',
@@ -23,6 +26,7 @@ const ORDER_STATUS_LABELS = {
   delivered: 'Entregado',
   cancelled: 'Cancelado',
   draft: 'Borrador',
+  closed: 'Cerrado',
 };
 
 const normalizeAdminImageUrls = (raw) => {
@@ -92,7 +96,7 @@ export default function Panel() {
 
   const tabs = useMemo(() => {
     return TABS_BASE.filter((t) => {
-      if ((t.key === 'dashboard' || t.key === 'productos' || t.key === 'usuarios' || t.key === 'pedidos') && !canManageProducts) {
+      if ((t.key === 'dashboard' || t.key === 'productos' || t.key === 'usuarios' || t.key === 'pedidos' || t.key === 'ventas' || t.key === 'ofertas') && !canManageProducts) {
         return false;
       }
       return true;
@@ -398,7 +402,7 @@ export default function Panel() {
           <small className="text-muted">Vista rapida para administradores</small>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Button variant="outline-secondary" size="sm" href={`${API_BASE}/admin/`} target="_blank" rel="noreferrer">
+          <Button variant="outline-secondary" size="sm" href={`${API_BASE}/${ADMIN_PATH}`} target="_blank" rel="noreferrer">
             Abrir Django admin
           </Button>
           <Button variant="outline-secondary" size="sm" href="/">
@@ -495,7 +499,7 @@ export default function Panel() {
           <small className="text-muted">Navega el catalogo por categoria y busca por nombre.</small>
         </div>
         <div className="d-flex gap-2">
-          <Button size="sm" variant="primary" href={`${API_BASE}/admin/products/product/`} target="_blank" rel="noreferrer">
+          <Button size="sm" variant="primary" href={`${API_BASE}/${ADMIN_PATH}products/product/`} target="_blank" rel="noreferrer">
             Crear desde Django
           </Button>
           <Button size="sm" variant="outline-secondary" href="/productos">
@@ -772,7 +776,7 @@ export default function Panel() {
                   <td>{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
                   <td><Badge bg="secondary">{o.statusLabel || ORDER_STATUS_LABELS[o.status] || o.status}</Badge></td>
                   <td className="text-end">
-                    <Button size="sm" variant="outline-secondary" href={`${API_BASE}/admin/orders/order/${o._id}/change/`} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline-secondary" href={`${API_BASE}/${ADMIN_PATH}orders/order/${o._id}/change/`} target="_blank" rel="noreferrer">
                       Abrir en Django
                     </Button>
                   </td>
@@ -795,7 +799,7 @@ export default function Panel() {
           <h4 className="mb-0">Ofertas</h4>
           <small className="text-muted">Descuentos por producto o categoria.</small>
         </div>
-        <Button size="sm" variant="outline-secondary" href={`${API_BASE}/admin/products/offer/`} target="_blank" rel="noreferrer">
+        <Button size="sm" variant="outline-secondary" href={`${API_BASE}/${ADMIN_PATH}products/offer/`} target="_blank" rel="noreferrer">
           Gestionar en Django
         </Button>
       </div>
@@ -876,6 +880,7 @@ export default function Panel() {
             {tab === 'productos' && canManageProducts ? renderProductos() : null}
             {tab === 'usuarios' && canManageProducts ? renderUsuarios() : null}
             {tab === 'pedidos' && canManageProducts ? renderPedidos() : null}
+            {tab === 'ventas' && canManageProducts ? <SalesCalendar /> : null}
             {tab === 'ofertas' && canManageProducts ? renderOfertas() : null}
             {tab === 'cuenta' ? renderCuenta() : null}
             {!canManageProducts && tab !== 'cuenta' ? (

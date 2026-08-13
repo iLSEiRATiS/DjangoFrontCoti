@@ -23,6 +23,7 @@ function normalizeBase(url) {
 }
 
 export const API_BASE = normalizeBase(RAW_BASE);
+export const ADMIN_PATH = NODE_ENV === 'production' ? 'panel-seguro-2026-Coti-Store/' : 'admin/';
 
 async function http(path, { method = 'GET', body, token, headers: extra = {} } = {}) {
   const headers = { Accept: 'application/json', ...extra };
@@ -125,7 +126,24 @@ export const api = {
     updateOffer:   (token, id, d)       => http(`/api/admin/offers/${encodeURIComponent(id)}`, { method: 'PATCH', token, body: d }),
     deleteOffer:   (token, id)          => http(`/api/admin/offers/${encodeURIComponent(id)}`, { method: 'DELETE', token }),
     importProductsXlsx: (token, formData) => http('/api/admin/products/import-xlsx', { method: 'POST', token, body: formData }),
-    updateStoreConfig: (token, d)         => http('/api/admin/store-config', { method: 'POST', token, body: d })
+    updateStoreConfig: (token, d)         => http('/api/admin/store-config', { method: 'POST', token, body: d }),
+    salesCalendar: (token, year, month)   => http(`/api/admin/sales-calendar?year=${year}&month=${month}`, { token }),
+    dailySales:    (token, date)          => http(`/api/admin/sales-calendar/${encodeURIComponent(date)}`, { token }),
+    downloadDailySalesPdf: async (token, date) => {
+      const res = await fetch(`${API_BASE}/api/admin/sales-calendar/${encodeURIComponent(date)}/pdf`, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'omit'
+      });
+      if (!res.ok) {
+        const msg = `${res.status} ${res.statusText}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.isAuthError = res.status === 401 || res.status === 403;
+        throw err;
+      }
+      return res.blob();
+    }
   }
 };
 

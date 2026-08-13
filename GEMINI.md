@@ -1,5 +1,9 @@
 # Resumen de Cambios (Cotistore Frontend y Backend)
 
+> [!WARNING]
+> **ESTADO PENDIENTE DE DESPLIEGUE:** Todo el trabajo listado en este documento (realizado hoy) se encuentra actualmente solo en tu entorno local. Debes hacer commit y push a GitHub para que el frontend se despliegue en Netlify, y hacer pull + migraciones en el VPS para el backend.
+
+
 ## 1. Botón Flotante de WhatsApp y Actualización de Número
 * Se implementó un nuevo componente `FloatingWhatsApp.jsx` que muestra el icono de WhatsApp siempre visible en la esquina inferior derecha.
 * Se agregó una animación de escala al interactuar (hover) y se integró globalmente a través del componente `Layout.jsx`.
@@ -39,3 +43,34 @@ Durante esta sesión de trabajo nos enfocamos en mejorar significativamente la e
 
 ## 3. Corrección de Bugs (CSS)
 * Se restauró una llave de cierre (`}`) faltante en una media query de `App.css` que había quedado huérfana y rompía la lectura del archivo de estilos en ciertos navegadores.
+
+---
+
+## 4. Implementación del Calendario Diario de Ventas
+* **Nuevo Panel de Ventas:** Se integró la nueva pestaña "Ventas" en el menú principal del panel de administración moderno (`Panel.jsx`).
+* **Componente de Almanaque Interactivo (`SalesCalendar.jsx`):** Se desarrolló un calendario tipo almanaque con navegación por año y mes. Los días con ventas finalizadas se resaltan visualmente mostrando un resumen del monto recaudado y la cantidad de pedidos.
+* **Modal de Detalle Diario (`DailySalesModal.jsx`):** Al hacer clic sobre un día resaltado, se abre un modal que desglosa los datos. A pedido del cliente, el modal separa la información por cada **Pedido Individual** (mostrando ID, hora, cliente y el listado de productos de esa orden específica) en lugar de una lista aglomerada.
+* **Backend de Reportes y Generación PDF (`api_admin.py` y `api_pdf.py`):**
+  * Se crearon 3 endpoints nuevos (`AdminSalesCalendarView`, `AdminDailySalesView`, `AdminDailySalesPdfView`) para manejar la lógica de fechas, cálculo de totales y descarga del reporte.
+  * Se implementó la creación dinámica de un **Reporte en PDF** (usando `ReportLab`). Este documento replica el desglose detallado pedido por pedido y sus respectivos ítems, siendo ideal para balances contables.
+* **Nuevo Estado de Pedidos ("Cerrado"):** 
+  * Se agregó el estado "Cerrado" (`closed`) a la BD (`orders/models.py`). El calendario y los resúmenes financieros **sólo** toman en cuenta los pedidos que se encuentren en este estado.
+  * Se agregó una **Acción Masiva (Admin Action)** en el panel de Django nativo (`admin.py`), permitiendo al usuario tildar múltiples pedidos a la vez y cerrarlos rápidamente con un clic.
+  * También se agregó este estado al selector de estados de la interfaz React para ediciones manuales.
+
+---
+
+## 5. Resolución de Conexiones Fallidas en Inicio de Sesión (Problema de Red/Wi-Fi)
+* **El Problema:** Algunos clientes no podían iniciar sesión desde ciertas redes Wi-Fi (la petición quedaba cargando indefinidamente o daba "Load failed"), pero funcionaba perfectamente con datos móviles.
+* **Diagnóstico Profundo:**
+  1. Se descartaron bloqueos de IPv6 forzando el apagado de la compatibilidad IPv6 en Cloudflare.
+  2. Se revisaron los registros (logs) del Firewall del VPS (UFW) y del Nginx, descartando baneos de IP por parte de Fail2ban u otras herramientas de seguridad.
+  3. Se descubrió que las peticiones `GET` (como cargar productos) sí llegaban a Nginx, pero la petición `POST` del inicio de sesión no, lo que descartaba errores de servidor.
+  4. La URL del frontend apuntaba correctamente al backend (descartando errores de rutas en producción).
+* **La Solución Definitiva:**
+  * El problema de raíz era un fallo de enrutamiento o caída de conexión TCP de ciertos proveedores de internet al intentar contactar directamente a la IP del VPS (Hostinger).
+  * Se resolvió **colocando la API (`api.cotistore.com.ar`) detrás del Proxy de Cloudflare (Nube Naranja)**.
+  * Al hacer esto, el cliente se conecta a la red global de Cloudflare, la cual actúa como un túnel seguro y estable hacia el VPS, evadiendo cualquier problema de enrutamiento local del proveedor de internet.
+* **Ajustes de Seguridad Derivados:**
+  * Al pasar la API por Cloudflare, se configuró una Regla WAF Personalizada para Omitir (Skip) el "Bot Fight Mode" y los "Managed Rules" exclusivamente para la ruta `/api/*`. Esto evita que Cloudflare intente inyectar Captchas invisibles que rompían las llamadas Axios/Fetch del frontend.
+  * La seguridad contra ataques de fuerza bruta se mantiene cubierta internamente por Django gracias al uso de `ScopedRateThrottle` en las vistas de autenticación, el cual captura correctamente la IP real del cliente a través del proxy.
