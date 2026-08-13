@@ -23,7 +23,12 @@ function normalizeBase(url) {
 }
 
 export const API_BASE = normalizeBase(RAW_BASE);
-export const ADMIN_PATH = NODE_ENV === 'production' ? 'panel-seguro-2026-Coti-Store/' : 'admin/';
+
+const IS_PRODUCTION = 
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PROD) ||
+  NODE_ENV === 'production';
+
+export const ADMIN_PATH = IS_PRODUCTION ? 'panel-seguro-2026-Coti-Store/' : 'admin/';
 
 async function http(path, { method = 'GET', body, token, headers: extra = {} } = {}) {
   const headers = { Accept: 'application/json', ...extra };
