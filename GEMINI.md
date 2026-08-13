@@ -74,3 +74,11 @@ Durante esta sesión de trabajo nos enfocamos en mejorar significativamente la e
 * **Ajustes de Seguridad Derivados:**
   * Al pasar la API por Cloudflare, se configuró una Regla WAF Personalizada para Omitir (Skip) el "Bot Fight Mode" y los "Managed Rules" exclusivamente para la ruta `/api/*`. Esto evita que Cloudflare intente inyectar Captchas invisibles que rompían las llamadas Axios/Fetch del frontend.
   * La seguridad contra ataques de fuerza bruta se mantiene cubierta internamente por Django gracias al uso de `ScopedRateThrottle` en las vistas de autenticación, el cual captura correctamente la IP real del cliente a través del proxy.
+
+---
+
+## 6. Corrección de Enlaces al Panel de Administración Dinámicos
+* **El Problema:** Todos los botones del frontend que redirigían al panel de administración nativo de Django estaban programados apuntando fijo a la ruta por defecto (`/admin/`). Sin embargo, en producción la ruta del administrador había sido cambiada por seguridad a `/panel-seguro-2026-Coti-Store/`.
+* **La Solución:**
+  * Se modificó el cliente de API (`api.js`) para usar una detección nativa de producción con Vite (`import.meta.env.PROD`), definiendo una constante dinámica `ADMIN_PATH`.
+  * Se actualizaron todos los botones (tanto en `Panel.jsx` como en `Admin.jsx`) para utilizar esta constante: si estás corriendo en tu entorno local el botón redirige a `/admin/`, y si es producción, redirige a la URL segura.
