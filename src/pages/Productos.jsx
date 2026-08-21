@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useStoreConfig } from '../context/StoreConfigContext';
 import productosData from '../data/productos.json';
 import api, { API_BASE } from '../lib/api';
+import { getVideoEmbed } from '../lib/videoUtils';
 import Seo from '../components/Seo';
 import { getGenericVariantPrice } from '../lib/productVariants';
 import { normalizeText, toAbsoluteUrl } from '../lib/seo';
@@ -128,28 +129,7 @@ const normalizeImageUrl = (value) => {
   return '';
 };
 
-const getVideoEmbed = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-  if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(raw)) return { type: 'video', src: raw };
-  try {
-    const url = new URL(raw);
-    const host = url.hostname.replace(/^www\./, '');
-    if (host === 'youtu.be') {
-      const id = url.pathname.replace(/\//g, '').trim();
-      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
-    }
-    if (host.includes('youtube.com')) {
-      const id = url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop();
-      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
-    }
-    if (host.includes('vimeo.com')) {
-      const id = url.pathname.split('/').filter(Boolean).pop();
-      if (id) return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
-    }
-  } catch {}
-  return { type: 'iframe', src: raw };
-};
+
 
 const normalizeProductName = (name = '') => {
   const raw = String(name || '').trim();
@@ -2247,20 +2227,38 @@ export default function Productos() {
                   tabIndex={0}
                 >
                   <div className="product-img-wrap">
-                    {p.imagen ? (
-                      <img
-                        src={p.imagen}
-                        alt={p.nombre}
-                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400?text=Imagen'; }}
-                      />
-                    ) : (
-                      <div
-                        className="d-flex align-items-center justify-content-center bg-light"
-                        style={{ height: 160, borderRadius: 8, color: '#9aa' }}
-                      >
-                        Sin imagen
-                      </div>
-                    )}
+                    {(() => {
+                      const vUrl = p.video_url || p.videoUrl || '';
+                      const vEmbed = getVideoEmbed(vUrl);
+                      if (vEmbed) {
+                        return (
+                          <div className="w-100 h-100" onClick={(e) => e.stopPropagation()}>
+                            {vEmbed.type === 'video' ? (
+                              <video src={vEmbed.src} controls className="object-fit-cover w-100 h-100" muted style={{ borderRadius: '8px 8px 0 0' }} />
+                            ) : (
+                              <iframe src={vEmbed.src} className="w-100 h-100 object-fit-cover border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ borderRadius: '8px 8px 0 0' }} />
+                            )}
+                          </div>
+                        );
+                      }
+                      if (p.imagen) {
+                        return (
+                          <img
+                            src={p.imagen}
+                            alt={p.nombre}
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400?text=Imagen'; }}
+                          />
+                        );
+                      }
+                      return (
+                        <div
+                          className="d-flex align-items-center justify-content-center bg-light"
+                          style={{ height: 160, borderRadius: 8, color: '#9aa' }}
+                        >
+                          Sin imagen
+                        </div>
+                      );
+                    })()}
                     {p.sin_stock && (
                       <div
                         className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"

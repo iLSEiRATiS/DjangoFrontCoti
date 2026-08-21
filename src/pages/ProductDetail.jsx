@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import Seo from '../components/Seo';
 import { getGenericVariantPrice } from '../lib/productVariants';
 import { normalizeText, toAbsoluteUrl } from '../lib/seo';
+import { getVideoEmbed } from '../lib/videoUtils';
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
@@ -19,28 +20,7 @@ const normalizeImageUrl = (value) => {
   return '';
 };
 
-const getVideoEmbed = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-  if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(raw)) return { type: 'video', src: raw };
-  try {
-    const url = new URL(raw);
-    const host = url.hostname.replace(/^www\./, '');
-    if (host === 'youtu.be') {
-      const id = url.pathname.replace(/\//g, '').trim();
-      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
-    }
-    if (host.includes('youtube.com')) {
-      const id = url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop();
-      if (id) return { type: 'iframe', src: `https://www.youtube.com/embed/${id}` };
-    }
-    if (host.includes('vimeo.com')) {
-      const id = url.pathname.split('/').filter(Boolean).pop();
-      if (id) return { type: 'iframe', src: `https://player.vimeo.com/video/${id}` };
-    }
-  } catch {}
-  return { type: 'iframe', src: raw };
-};
+
 
 // Normalización estricta para comparaciones
 const cleanString = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -122,8 +102,14 @@ export default function ProductDetail() {
 
         setSelectedAttrs(initialAttrs);
         setProduct(mapped);
-        setSelectedImage(images[0] || '');
-        setSelectedImageIndex(0);
+        setProduct(mapped);
+        if (mapped.videoUrl) {
+          setSelectedImage('__video__');
+          setSelectedImageIndex(-1);
+        } else {
+          setSelectedImage(images[0] || '');
+          setSelectedImageIndex(0);
+        }
       } catch (e) {
         if (alive) setError(e?.message || 'No se pudo cargar el producto');
       } finally {
@@ -186,12 +172,34 @@ export default function ProductDetail() {
 
         <Row className="g-4">
           <Col lg={7}>
-            <div className="border rounded bg-white p-2 mb-3 text-center" style={{ minHeight: 400 }}>
-              {selectedImage ? <img src={selectedImage} alt="" style={{ maxWidth: '100%', maxHeight: 500, objectFit: 'contain' }} /> : 'Sin imagen'}
+            <div className="border rounded bg-white p-2 mb-3 text-center d-flex align-items-center justify-content-center" style={{ minHeight: 400 }}>
+              {(() => {
+                if (selectedImage === '__video__' && product.videoUrl) {
+                  const vEmbed = getVideoEmbed(product.videoUrl);
+                  if (vEmbed) {
+                    return vEmbed.type === 'video' ? (
+                      <video src={vEmbed.src} controls className="w-100 h-100" style={{ maxHeight: 500, objectFit: 'contain' }} autoPlay />
+                    ) : (
+                      <iframe src={vEmbed.src} className="w-100 border-0" style={{ minHeight: 400 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    );
+                  }
+                }
+                return selectedImage ? <img src={selectedImage} alt="" style={{ maxWidth: '100%', maxHeight: 500, objectFit: 'contain' }} /> : 'Sin imagen';
+              })()}
             </div>
             <div className="d-flex gap-2 flex-wrap">
+              {product.videoUrl && (
+                <div 
+                  className={`border rounded d-flex align-items-center justify-content-center bg-dark text-white ${selectedImage === '__video__' ? 'border-primary border-2' : ''}`}
+                  style={{ width: 60, height: 60, cursor: 'pointer', opacity: selectedImage === '__video__' ? 1 : 0.7 }}
+                  onClick={() => { setSelectedImage('__video__'); setSelectedImageIndex(-1); }}
+                  title="Ver video"
+                >
+                  <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"/></svg>
+                </div>
+              )}
               {product.images.map((img, idx) => (
-                <img key={idx} src={img} alt="" className={`border rounded p-1 ${selectedImageIndex === idx ? 'border-primary' : ''}`} style={{ width: 60, height: 60, cursor: 'pointer', objectFit: 'cover' }} onClick={() => { setSelectedImage(img); setSelectedImageIndex(idx); }} />
+                <img key={idx} src={img} alt="" className={`border rounded p-1 ${selectedImageIndex === idx ? 'border-primary border-2' : ''}`} style={{ width: 60, height: 60, cursor: 'pointer', objectFit: 'cover' }} onClick={() => { setSelectedImage(img); setSelectedImageIndex(idx); }} />
               ))}
             </div>
           </Col>
