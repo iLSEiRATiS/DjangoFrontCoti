@@ -1425,7 +1425,7 @@ export default function Productos() {
   const qs = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const [search, setSearch] = useState(qs.get('search') || '');
   const [searchDebounced, setSearchDebounced] = useState((qs.get('search') || '').trim());
-  const [sortKey, setSortKey] = useState(qs.get('sort') || 'relevancia');
+  const [sortKey, setSortKey] = useState(qs.get('sort') || 'nombre_asc');
   const [cat, setCat] = useState(qs.get('cat') || '');
   const [subcat, setSubcat] = useState(qs.get('subcat') || '');
   const [leafcat, setLeafcat] = useState(qs.get('leafcat') || '');
@@ -1504,7 +1504,7 @@ export default function Productos() {
     if (cat) params.set('cat', cat);
     if (subcat) params.set('subcat', subcat);
     if (leafcat) params.set('leafcat', leafcat);
-    if (sortKey !== 'relevancia') params.set('sort', sortKey);
+    if (sortKey !== 'nombre_asc') params.set('sort', sortKey);
     if (per !== 12) params.set('per', String(per));
     if (page !== 1) params.set('page', String(page));
     navigate({ pathname: '/productos', search: params.toString() }, { replace: true });
@@ -1534,7 +1534,7 @@ export default function Productos() {
     const nextCat = qs.get('cat') || '';
     const nextSubcat = qs.get('subcat') || '';
     const nextLeafcat = qs.get('leafcat') || '';
-    const nextSort = qs.get('sort') || 'relevancia';
+    const nextSort = qs.get('sort') || 'nombre_asc';
     const perParam = Number(qs.get('per') || 12);
     const nextPer = [12, 24, 48].includes(perParam) ? perParam : 12;
     const pageParam = Number(qs.get('page') || 1);
