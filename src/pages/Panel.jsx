@@ -26,7 +26,6 @@ const ORDER_STATUS_LABELS = {
   delivered: 'Entregado',
   cancelled: 'Cancelado',
   draft: 'Borrador',
-  closed: 'Cerrado',
 };
 
 const normalizeAdminImageUrls = (raw) => {

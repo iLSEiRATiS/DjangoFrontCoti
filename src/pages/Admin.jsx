@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useStoreConfig } from '../context/StoreConfigContext';
 import api from '../lib/api';
 import SalesCalendar from '../components/SalesCalendar';
-const STATUSES = ['created', 'approved', 'pending_payment', 'paid', 'shipped', 'delivered', 'cancelled', 'closed'];
+const STATUSES = ['created', 'approved', 'pending_payment', 'paid', 'shipped', 'delivered', 'cancelled'];
 const STATUS_LABELS = {
   created: 'Creado',
   approved: 'Aprobado',
@@ -15,7 +15,6 @@ const STATUS_LABELS = {
   shipped: 'Enviado',
   delivered: 'Entregado',
   cancelled: 'Cancelado',
-  closed: 'Cerrado',
 };
 const STATUS_VARIANTS = {
   created: 'secondary',
@@ -25,7 +24,6 @@ const STATUS_VARIANTS = {
   shipped: 'primary',
   delivered: 'success',
   cancelled: 'danger',
-  closed: 'dark',
 };
 
 const norm = (s = '') =>
