@@ -101,6 +101,14 @@ export default function SalesCalendar() {
             Actualizar
           </Button>
         </Col>
+        {!loading && Object.keys(data).length > 0 && (
+          <Col className="ms-auto pb-1 text-end">
+            <div className="d-inline-block bg-success text-white px-3 py-1 rounded shadow-sm text-center">
+              <div className="small opacity-75 text-uppercase fw-semibold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Total del Mes</div>
+              <div className="fw-bold fs-5">{formatMoney(Object.values(data).reduce((acc, curr) => acc + (curr.total || 0), 0))}</div>
+            </div>
+          </Col>
+        )}
       </Row>
       
       {error && <div className="alert alert-danger">{error}</div>}
