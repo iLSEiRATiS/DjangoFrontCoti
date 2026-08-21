@@ -82,3 +82,46 @@ Durante esta sesión de trabajo nos enfocamos en mejorar significativamente la e
 * **La Solución:**
   * Se modificó el cliente de API (`api.js`) para usar una detección nativa de producción con Vite (`import.meta.env.PROD`), definiendo una constante dinámica `ADMIN_PATH`.
   * Se actualizaron todos los botones (tanto en `Panel.jsx` como en `Admin.jsx`) para utilizar esta constante: si estás corriendo en tu entorno local el botón redirige a `/admin/`, y si es producción, redirige a la URL segura.
+
+---
+
+## 7. Orden Alfabético por Defecto en Catálogo Visual
+* **El Problema:** Se había intentado forzar el orden alfabético en el backend, pero el estado local del frontend estaba sobrescribiendo la configuración inicializando siempre en "Relevancia".
+* **La Solución:**
+  * Se deshizo el cambio forzado en la base de datos (Backend) para mantener su comportamiento natural intacto.
+  * Se actualizó la lógica del catálogo en React (`Productos.jsx`) para que el filtro "Nombre: A-Z" sea la opción por defecto en la interfaz al ingresar a la tienda.
+  * El usuario aún mantiene la libertad de desplegar la lista y elegir "Relevancia" o cualquier otro orden.
+
+## 8. Soporte de Videos Integrado (YouTube, Vimeo e ImageKit)
+* **El Problema:** Los productos que contaban con enlaces de video en su descripción (`videoUrl`) no aprovechaban dicho recurso y requerían clicks adicionales para visualizarse fuera de la tienda.
+* **La Solución (Miniatura en Tarjeta):** 
+  * Ahora, si un producto tiene video, la tarjeta del catálogo prioriza el video en lugar de la imagen principal. 
+  * Se creó un reproductor en miniatura directo en la tarjeta, permitiendo al cliente darle Play sin tener que entrar al detalle.
+  * Soporte nativo para enlaces de plataformas de streaming (YouTube/Vimeo vía `iframe`) y videos puros subidos a nubes privadas como **ImageKit** (vía `<video controls>`).
+* **La Solución (Detalle del Producto):**
+  * Al abrir el producto, el reproductor de video toma el protagonismo cargándose automáticamente en el visor central grande.
+  * Se incorporó un icono distintivo ("Play") en la tira de imágenes inferior para poder alternar rápidamente entre la galería de fotos y el video del producto.
+
+---
+
+## Guía Oficial de Despliegue en VPS (Producción)
+
+Si alojas todo el código en el mismo VPS y necesitas bajar los últimos cambios de GitHub para que queden reflejados en internet, aquí tienes los bloques de código exactos que debes copiar y pegar en tu terminal (`root@srv1552159`).
+
+### 1. Actualizar el Backend (Django)
+```bash
+cd /root/CotiDjangoFinal/backend
+git pull origin main
+source .venv/bin/activate
+python manage.py migrate
+sudo systemctl restart gunicorn
+```
+
+### 2. Actualizar el Frontend (React)
+*(Nota: Si usas un servicio en la nube como Netlify o Vercel conectado a GitHub, **el frontend se actualiza solo** y no necesitas hacer este paso).*
+```bash
+cd /root/DjangoFrontCoti
+git pull origin main
+npm install
+npm run build
+```
