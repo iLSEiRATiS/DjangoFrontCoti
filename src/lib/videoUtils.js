@@ -2,6 +2,7 @@ export const getVideoEmbed = (value) => {
   const raw = String(value || '').trim();
   if (!raw) return null;
   if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(raw)) return { type: 'video', src: raw };
+  if (raw.includes('imagekit.io')) return { type: 'video', src: raw };
   try {
     const url = new URL(raw);
     const host = url.hostname.replace(/^www\./, '');
