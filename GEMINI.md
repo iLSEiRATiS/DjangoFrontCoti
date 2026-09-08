@@ -18,6 +18,13 @@
 * Se extrajo la configuración general ("Mostrar precios a invitados", etc.) que antes estaba oculta en la App de Productos.
 * Mediante un modelo "Proxy" (`GlobalStoreSettings`), se inyectó esta opción de configuración directamente dentro del módulo de **Usuarios** en el panel de administrador nativo de Django, haciendo mucho más intuitivo su acceso.
 
+## 4. Nuevo Rol: Operador (Restricción de Precios e Importes)
+* **Nuevo rol `operator`:** Pensado para personal de depósito/empaque.
+* **Precios Ocultos:** No visualiza precios en el catálogo de productos ni en el formulario de edición.
+* **Importes Ocultos:** No visualiza `total`, `envio`, `precio_unitario` ni `subtotal` en los pedidos.
+* **Facturas Restringidas:** Bloqueado el acceso y descarga de PDFs de facturas/presupuestos (403 Forbidden).
+* **Funciones Permitidas:** Mantiene acceso completo a generación de **Rótulos de envío** y **Pedidos de stock**.
+
 ---
 
 
