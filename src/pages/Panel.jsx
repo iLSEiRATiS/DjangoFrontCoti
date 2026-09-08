@@ -77,6 +77,7 @@ const approvalVariant = (status) => {
 export default function Panel() {
   const { user, token, logout } = useAuth();
   const { config: storeConfig, setConfig: setStoreConfig } = useStoreConfig();
+  const [params, setParams] = useSearchParams();
   const role = user?.role || 'customer';
   const isAdmin = role === 'admin';
   const isOperator = role === 'operator';
