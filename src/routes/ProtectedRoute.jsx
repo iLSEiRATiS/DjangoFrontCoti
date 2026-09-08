@@ -25,7 +25,7 @@ export default function ProtectedRoute({ children, admin = false, requireAdmin }
     return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
 
-  if (mustBeAdmin && user.role !== 'admin') {
+  if (mustBeAdmin && user.role !== 'admin' && user.role !== 'operator') {
     return <Navigate to="/" replace />;
   }
   return children ? children : <Outlet />;

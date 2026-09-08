@@ -77,12 +77,13 @@ const approvalVariant = (status) => {
 export default function Panel() {
   const { user, token, logout } = useAuth();
   const { config: storeConfig, setConfig: setStoreConfig } = useStoreConfig();
-  const [params, setParams] = useSearchParams();
   const role = user?.role || 'customer';
   const isAdmin = role === 'admin';
-  const canManageProducts = isAdmin;
+  const isOperator = role === 'operator';
+  const isStaffUser = isAdmin || isOperator;
+  const canManageProducts = isStaffUser;
 
-  const defaultTab = canManageProducts ? 'dashboard' : 'cuenta';
+  const defaultTab = isOperator ? 'pedidos' : (isAdmin ? 'dashboard' : 'cuenta');
   const [tab, setTab] = useState(params.get('tab') || defaultTab);
 
   useEffect(() => {
@@ -98,9 +99,12 @@ export default function Panel() {
       if ((t.key === 'dashboard' || t.key === 'productos' || t.key === 'usuarios' || t.key === 'pedidos' || t.key === 'ventas' || t.key === 'ofertas') && !canManageProducts) {
         return false;
       }
+      if (isOperator && (t.key === 'usuarios' || t.key === 'ventas' || t.key === 'dashboard' || t.key === 'ofertas')) {
+        return false;
+      }
       return true;
     });
-  }, [canManageProducts]);
+  }, [canManageProducts, isOperator]);
 
   const [overview, setOverview] = useState(null);
   const [ovLoading, setOvLoading] = useState(false);
@@ -547,7 +551,7 @@ export default function Panel() {
               <tr>
                 <th>Nombre</th>
                 <th>Categoria</th>
-                <th>Precio</th>
+                {!isOperator && <th>Precio</th>}
                 <th>Stock</th>
                 <th>Imagenes</th>
                 <th></th>
@@ -558,7 +562,7 @@ export default function Panel() {
                 <tr key={p.id || p.slug || p.name}>
                   <td>{p.name || p.nombre}</td>
                   <td>{p.category?.pathName || p.category?.name || p.categoria?.pathName || p.categoria?.name || p.categoria || '-'}</td>
-                  <td>{p.price != null ? `$ ${p.price}` : '-'}</td>
+                  {!isOperator && <td>{p.price != null ? `$ ${p.price}` : '-'}</td>}
                   <td>{p.stock ?? '-'}</td>
                   <td>{Array.isArray(p.images) ? p.images.length : (p.imageUrl || p.image_url ? 1 : 0)}</td>
                   <td className="text-end">
@@ -569,7 +573,7 @@ export default function Panel() {
                 </tr>
               ))}
               {filteredProducts.length === 0 ? (
-                <tr><td colSpan={6} className="text-center text-muted">Sin productos.</td></tr>
+                <tr><td colSpan={isOperator ? 5 : 6} className="text-center text-muted">Sin productos.</td></tr>
               ) : null}
             </tbody>
           </Table>
@@ -584,14 +588,16 @@ export default function Panel() {
           </div>
           {prodSaveErr ? <Alert variant="danger" className="py-2">{prodSaveErr}</Alert> : null}
           <Row className="g-2">
-            <Col md={6}>
+            <Col md={isOperator ? 9 : 6}>
               <Form.Label>Nombre</Form.Label>
               <Form.Control value={prodForm.name} onChange={(e) => setProdForm((f) => ({ ...f, name: e.target.value }))} />
             </Col>
-            <Col md={3}>
-              <Form.Label>Precio</Form.Label>
-              <Form.Control type="number" step="0.01" value={prodForm.price} onChange={(e) => setProdForm((f) => ({ ...f, price: e.target.value }))} />
-            </Col>
+            {!isOperator && (
+              <Col md={3}>
+                <Form.Label>Precio</Form.Label>
+                <Form.Control type="number" step="0.01" value={prodForm.price} onChange={(e) => setProdForm((f) => ({ ...f, price: e.target.value }))} />
+              </Col>
+            )}
             <Col md={3}>
               <Form.Label>Stock</Form.Label>
               <Form.Control type="number" min="0" value={prodForm.stock} onChange={(e) => setProdForm((f) => ({ ...f, stock: e.target.value }))} />
