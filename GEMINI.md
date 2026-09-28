@@ -1,7 +1,14 @@
 # Resumen de Cambios (Cotistore Frontend y Backend)
 
-> [!WARNING]
-> **ESTADO PENDIENTE DE DESPLIEGUE:** Todo el trabajo listado en este documento (realizado hoy) se encuentra actualmente solo en tu entorno local. Debes hacer commit y push a GitHub para que el frontend se despliegue en Netlify, y hacer pull + migraciones en el VPS para el backend.
+## Registro de actualización — 2026-09-09
+
+* **Revisión documental:** Se reemplazó la referencia ambigua a "hoy" y se aclaró que el estado actual de producción no está verificado.
+* **Último cambio previo en este archivo:** El 2026-09-08 a las 10:13 (Argentina), commit `61e1391`, se actualizó la documentación del rol Operador.
+* **Último cambio documental previo entre ambos proyectos:** El 2026-09-08 a las 10:54 (Argentina), commit `3fddda5` del backend, se ampliaron las instrucciones de asignación del rol Operador en `../CotiDjangoFinal/GEMINI.md`.
+* **Alcance de esta actualización:** Solo documentación; los cambios funcionales descritos a continuación corresponden a sesiones anteriores y no tienen fechas individuales registradas aquí.
+
+> [!NOTE]
+> **DESPLIEGUE NO VERIFICADO AL 2026-09-09:** La nota anterior indicaba trabajo local pendiente de despliegue. Ese estado debe comprobarse en GitHub, Netlify y el VPS antes de considerarlo vigente. La guía al final del documento conserva los pasos de actualización.
 
 
 ## 1. Botón Flotante de WhatsApp y Actualización de Número
