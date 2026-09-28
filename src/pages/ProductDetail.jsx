@@ -88,10 +88,10 @@ export default function ProductDetail() {
         Object.entries(mapped.attributes).forEach(([attrKey, values]) => {
           const allOptions = getAttributeOptions(attrKey, values, mapped.name);
           const disabledList = mapped.attributesSinStock[attrKey] || [];
-          const disabledClean = disabledList.map(v => clean(v));
+          const disabledClean = disabledList.map((value) => cleanString(value));
           
           // Filtrar las opciones que NO están sin stock
-          const visibleOptions = allOptions.filter(opt => !disabledClean.includes(clean(opt)));
+          const visibleOptions = allOptions.filter((option) => !disabledClean.includes(cleanString(option)));
 
           if (visibleOptions.length > 0) {
             initialAttrs[attrKey] = String(visibleOptions[0]);
